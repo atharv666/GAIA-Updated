@@ -1,0 +1,39 @@
+\clearpage
+\chapter*{Nomenclature}
+\addcontentsline{toc}{chapter}{Nomenclature}
+Symbols and notations used in Section~4.4 and elsewhere in this report are listed here, and only here.
+
+\begin{singlespace}
+\setlength{\parskip}{0pt}
+\small
+\begin{longtable}{|P{2.6cm}|P{10.8cm}|}
+\hline
+\textbf{SYMBOL} & \textbf{MEANING}\\\hline\endhead
+$s$ & A sensor channel, for example temperature, humidity, soil moisture, MQ-5 or MQ-6\\\hline
+$x_{s,i}$ & The $i$-th reading of sensor $s$\\\hline
+$\Delta$ & Aggregation window length (15 minutes by default)\\\hline
+$W_k$ & The $k$-th window, $[t_k, t_k+\Delta)$\\\hline
+$n_{s,k}$ & Number of readings of sensor $s$ inside window $W_k$\\\hline
+$\mu_{s,k},\ \sigma_{s,k}$ & Mean and standard deviation of sensor $s$ in window $W_k$\\\hline
+$m_{s,k},\ M_{s,k}$ & Minimum and maximum of sensor $s$ in window $W_k$\\\hline
+$\mu_s(R)$ & Count-weighted mean of sensor $s$ over a set of windows $R$\\\hline
+$t_i^{\mathrm{recv}}$ & Time at which the backend received a batch\\\hline
+$u_i,\ u^{\mathrm{sent}}$ & Rover uptime at reading $i$, and at the moment the batch was sent (milliseconds)\\\hline
+$\hat t_i$ & Reconstructed wall-clock time of reading $i$\\\hline
+$\mathbf{q},\ \mathbf{d}$ & Unit-length embedding vectors of a query and of a document chunk\\\hline
+$\mathrm{cos}(\mathbf{q},\mathbf{d})$ & Cosine similarity of $\mathbf{q}$ and $\mathbf{d}$\\\hline
+$\mathrm{rank}_r(d)$ & Rank of chunk $d$ in ranked list $r$ (1 is best)\\\hline
+$k$ & Reciprocal Rank Fusion constant ($k=60$)\\\hline
+$\mathrm{RRF}(d)$ & Fused score of chunk $d$\\\hline
+$b$ & A five-minute time bucket\\\hline
+$\mathrm{st}_s(b)$ & Status of sensor $s$ in bucket $b$ (recorded, off, no reading, offline, unknown)\\\hline
+$T_w$ & Heater warm-up time of an MQ sensor (60 s)\\\hline
+$p_i,\ y_i$ & Self-reported confidence of the $i$-th diagnosis, and whether it was correct (1) or not (0)\\\hline
+$B_j$ & The $j$-th confidence bin used for calibration\\\hline
+$\mathrm{ECE}$ & Expected Calibration Error\\\hline
+$\mathrm{BS}$ & Brier score\\\hline
+$R_1,\ R_2$ & Resistors of the battery voltage divider\\\hline
+$V_{\mathrm{bat}}$ & Battery voltage\\\hline
+$P_h,\ t_{\mathrm{off}}$ & Heater power and the time a sensor is switched off\\\hline
+\end{longtable}
+\end{singlespace}

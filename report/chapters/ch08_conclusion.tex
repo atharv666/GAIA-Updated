@@ -1,0 +1,84 @@
+\chapter{Conclusion and Future Work}
+
+\section{Conclusion}
+
+This project built GAIA, a rover-assisted Generative AI system for proactive crop health monitoring, and evaluated it. The rover is
+deliberately a thin data-acquisition layer; the engineering effort and the evaluation concentrate on two independent Generative AI
+pipelines that share one knowledge store.
+
+\textbf{Pipeline A} answers questions about the farmer's own field. It separates the roles of code and model: exact statistics, time
+resolution and citation checks are done by deterministic code, while the model plans the query and phrases the answer. On a synthetic farm with ground truth
+computed from the raw readings, the final configurations answered all ten evaluation questions with correct numbers, the right kind of evidence
+and 100\,\% planner accuracy. \textbf{Pipeline B} turns a photograph into a possibility-phrased, evidence-based diagnosis with a single vision-language call and
+one bounded research agent, and feeds the findings one way into the shared store, so that the assistant can later discuss a
+diagnosis together with the conditions in the field.
+
+The battery constraint of the rover led to a feature that matters beyond power saving: every sensor can be switched on or off,
+the backend records the switches, readings and heartbeats, and the assistant explains gaps in the data from these records instead of guessing.
+Streaming chat, a Live view of the pipeline, a rover simulator, bring-up tools and demonstration data complete the system, which is verified by
+96 backend and 22 application automated tests and by both firmware sketches compiling without warnings.
+
+Table~\ref{tab:objectives} relates the outcomes to the objectives of Section~1.5.
+
+\begin{table}[H]
+\centering
+\caption{Objectives and outcomes.}
+\label{tab:objectives}
+\small
+\begin{tabular}{|c|P{6.1cm}|P{5.2cm}|}
+\hline
+\textbf{Objective} & \textbf{Outcome} & \textbf{Evidence}\\\hline
+O1 & Rover firmware, HTTP API, live video, stills & Compiled sketches; check tools\\\hline
+O2 & Validated ingestion; windows, daily and on/off chunks; embeddings & Ingestion and PostgreSQL tests; Chapter~5\\\hline
+O3 & Pipeline A with exact facts, hybrid retrieval, validated citations & 100\,\% on ten questions; Chapter~6\\\hline
+O4 & Pipeline B with one vision call, one agent, one-way write & End-to-end tests and a local-model run\\\hline
+O5 & Per-sensor switches and gap-aware answers & Switch tests; live simulator run\\\hline
+O6 & Flutter application with streaming and Live view & Application tests; screenshots\\\hline
+O7 & Responsible-AI practices & Prompts, validators, tests; Chapter~4\\\hline
+O8 & Tests, evaluation and performance figures & Chapter~6 and Chapter~7\\\hline
+\end{tabular}
+\end{table}
+
+\section{Limitations of the Proposed System}
+
+\begin{itemize}
+\item \textbf{Confidence is uncalibrated.} The model's self-reported confidence is only a rough indicator. The system says so on every result
+      and provides the metrics to measure it, but it does not correct it.
+\item \textbf{The vision model can be wrong.} It can misidentify a crop or a disease, especially on poor photographs; results are
+      possibilities with evidence and look-alikes, not diagnoses.
+\item \textbf{Search quality varies.} The agent reads search snippets, not full web pages, and results depend on the region and the language.
+\item \textbf{Sensor limits.} The MQ sensors are uncalibrated and cross-sensitive and are reported as relative indices; the DHT11 has about $\pm$2\,$^{\circ}$C and
+      $\pm$5\,\% RH accuracy; the soil probe needs per-probe calibration.
+\item \textbf{No location.} Readings belong to the rover, not to a plot, because there is no GPS or odometry.
+\item \textbf{Small evaluation.} The evaluation uses ten questions on a synthetic farm; the vision benchmark is an upper bound for field
+      photographs, and results with the cloud model are reported only where they were measured.
+\item \textbf{Power saving needs hardware.} A switch saves energy only when the sensor's supply passes through an electronic switch; otherwise the sensor is only ignored in software.
+      Gas sensors need a few minutes to warm up after being switched on.
+\item \textbf{Controller layout.} The firmware reads all sensors, including the ultrasonic one, on a single Nano; using a second Nano for the ultrasonic sensor would need an
+      additional link to the ESP32.
+\item \textbf{Single farm and user.} There are no accounts, and an optional shared API key is the only access control.
+\item \textbf{Search latency.} The semantic search over the newest window lags by up to about 150 seconds after the window closes, although exact statistics are always current.
+\end{itemize}
+
+\section{Future Work}
+
+\begin{itemize}
+\item Calibrate the confidence (for example by mapping it to measured accuracy on a field-photograph set) and run a small usability study with farmers.
+\item For uncertain results, ask for a better photograph before searching, which is currently an open design item.
+\item Add a section in the application for farmers' own notes and documents (the backend already stores and retrieves them).
+\item Let the chat offer a button that switches a sensor on when its tip is shown.
+\item Track the rover's position (GPS or wheel odometry) so that readings and diagnoses belong to plots.
+\item Add push alerts for unusual readings, adaptive sampling that raises the rate when conditions change, and solar charging.
+\item Multi-tenant authentication, offline-first mobile synchronisation, and Indian-language voice interaction.
+\item A larger evaluation: more questions, several cloud and local models, and a field-photograph benchmark.
+\end{itemize}
+
+\section{Applications}
+
+\begin{itemize}
+\item \textbf{Field scouting for small and medium farms.} Walk or drive the rover through a plot, measure conditions on demand and ask questions in plain language.
+\item \textbf{Early warning of disease pressure.} Link high-humidity periods in the sensor log to photographs and diagnoses taken at the same time.
+\item \textbf{Greenhouses and polyhouses.} The same pipeline can answer questions about temperature, humidity and gas levels in a closed space.
+\item \textbf{Livestock sheds and biogas units.} The gas sensors can flag unusual readings near cattle sheds or digesters.
+\item \textbf{Agricultural extension and education.} The system demonstrates grounded, honest generative AI, and the simulator and demonstration data run without any hardware.
+\end{itemize}

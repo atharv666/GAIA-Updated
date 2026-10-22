@@ -1,0 +1,440 @@
+\chapter{Project Implementation}
+
+\section{Overview of Project Modules}
+
+The repository is organised into two main folders, \texttt{frontend} (the Flutter application) and \texttt{backend} (all services and
+pipeline logic), plus the rover firmware, demonstration data and documentation. Table~\ref{tab:modules} maps each module to its
+location.
+
+\begin{table}[H]
+\centering
+\caption{Project modules and their locations.}
+\label{tab:modules}
+\small
+\begin{tabular}{|P{3.2cm}|P{5.8cm}|P{3.8cm}|}
+\hline
+\textbf{Module} & \textbf{Location} & \textbf{Responsibility}\\\hline
+Rover firmware & \texttt{firmware/} & Nano controller, ESP32-CAM server, UART protocol\\\hline
+Ingestion & \texttt{backend/gaia/ingestion} & Validation, switches, windows, text chunks\\\hline
+Knowledge store & \texttt{backend/gaia/knowledge} & Chunk upserts, hybrid retrieval\\\hline
+Pipeline A & \texttt{backend/gaia/pipeline\_a} & Planner, SQL facts, farm RAG, open chat, streaming\\\hline
+Pipeline B & \texttt{backend/gaia/pipeline\_b} & VLM, research agent, diagnosis jobs\\\hline
+Providers & \texttt{backend/gaia/providers} & LLM and VLM clients, embeddings, web search\\\hline
+API and live view & \texttt{backend/gaia/api}, \texttt{core/activity.py} & REST and SSE endpoints, activity log\\\hline
+Web interface & \texttt{backend/gaia/web} & Browser version of the app and a retrieval inspector\\\hline
+Tools and evaluation & \texttt{backend/scripts} & Rover simulator, bring-up tools, evaluations\\\hline
+Mobile application & \texttt{frontend/lib} & Screens, services, models\\\hline
+Demonstration data & \texttt{demo\_data/} & Sample history, notes, documents, photos and loader\\\hline
+Delivery & \texttt{.github/workflows}, Docker files & APK build, tests, containers\\\hline
+\end{tabular}
+\end{table}
+
+\section{Data Collection and Preprocessing}
+
+\subsection{From the Sensor to the Backend}
+
+The Nano samples the sensors and sends a checksummed text frame to the ESP32 twice a second. The ESP32 converts the latest frame into
+JSON every five seconds, queues it, and posts a batch every 15 seconds (or immediately after a sensor is switched). An example batch
+that the ESP32 sends when it has no clock is shown below. Each reading carries only its uptime; the backend reconstructs the time with
+Equation~\ref{eq:time}.
+
+\begin{lstlisting}
+POST /api/v1/telemetry          X-Device-Key: <key>
+{"device_id": "rover-01", "sent_uptime_ms": 130000,
+ "sensor_switches": {"dht11": true, "soil_moisture": true, "mq5": true, "mq6": true},
+ "readings": [
+   {"uptime_ms": 120000,
+    "values": {"temperature": 27.5, "humidity": 61.0, "soil_moisture": 43.5,
+               "mq5": 210, "mq6": 190, "distance_cm": 91, "battery_v": 7.85},
+    "state": {"moving": false, "arm_deployed": true, "soil_valid": true}} ]}
+\end{lstlisting}
+
+\subsection{Validation}
+
+For each value the backend normalises the sensor name (for example \texttt{temp} to \texttt{temperature}), rejects non-numeric and
+out-of-range values using the sensor registry, drops soil moisture unless the probe state says the arm is deployed and the rover
+is still, ignores duplicates (the same device, sensor and time), and rejects timestamps more than five minutes in the future.
+The response reports how many values were accepted, rejected and duplicated, with a short list of warnings.
+
+\subsection{Aggregation and Text Generation}
+
+Windows that received new readings are marked ``dirty''. A background job (every 60 seconds) and every chat question run a
+\emph{sync}: closed windows are re-aggregated (Equation~\ref{eq:window}), written as text and embedded, and the dirty mark is removed only if no
+new reading arrived in the meantime, so late data from the ring buffer is never lost. A window chunk looks like this (a real example
+from the demonstration run):
+
+\begin{lstlisting}
+Field sensor readings from rover-01 on Saturday 17 October 2026, 16:00-16:15
+(afternoon, farm time).
+- Air temperature: average 32.8 C (min 32.1, max 33.5, 15 readings) - hot:
+  heat stress possible, especially with low soil moisture.
+- Relative humidity: average 49% (min 45%, max 52%, 15 readings) - moderate.
+- Soil moisture: average 39.2% (min 38.4%, max 40.0%, 10 readings) - adequate.
+- MQ5 gas index: average 210 ADC (min 180, max 240, 15 readings) - baseline.
+\end{lstlisting}
+
+If a sensor has no statistics in a window, the chunk says why, for example ``MQ5 gas index: not recorded in this window --- sensor
+switched off''. Chunks whose text is unchanged are not embedded again (a content hash is compared), and each chunk records the
+embedding model that produced its vector, so a change of model never mixes vector spaces (a re-index endpoint re-embeds all chunks).
+
+\subsection{Image Preprocessing}
+
+Uploaded photographs are validated with Pillow (non-images and decompression bombs are rejected), rotated according to their EXIF
+orientation, resized to at most 1600 pixels and saved as JPEG. The farmer's optional note is stored as metadata but is
+\emph{not} shown to the model, which keeps Pipeline B image-only.
+
+\section{Generative AI Model Selection}
+
+\begin{itemize}
+\item \textbf{Chat and planning: Gemini 2.5 Flash.} It supports a response schema (structured output), streaming, and is fast and
+      inexpensive enough for several calls per question. It is configurable (\texttt{LLM\_MODEL}); newer models can be
+      selected without code changes.
+\item \textbf{Vision: Gemini 2.5 Flash.} The same model accepts images, so one API key serves both roles. The vision model is configurable
+      separately (\texttt{VLM\_MODEL}).
+\item \textbf{Embeddings: gemini-embedding-001 at 768 dimensions}, L2-normalised~\cite{lee2025geminiembedding}. Queries and documents
+      use the corresponding task types. An offline hashing embedder is the fallback so that retrieval works without a key.
+\item \textbf{Alternatives.} Any OpenAI-compatible service (Groq with Llama models, xAI Grok, local Ollama) can replace the chat or the vision
+      model through configuration. The pipelines use only two provider operations, \texttt{complete} (free text) and \texttt{structured}
+      (validated JSON, plus a streaming variant), so provider changes are configuration, not code. The local-model path was
+      tested end to end with Gemma served by Ollama.
+\item \textbf{Web search.} DuckDuckGo through the \texttt{ddgs} package needs no key and is the default; Tavily is used when its key is set.
+\end{itemize}
+
+\section{Model Configuration / Fine-Tuning}
+
+No model is fine-tuned. The reasons are those of Table~\ref{tab:approaches}: the knowledge that matters (the farm's own
+measurements) changes every few seconds and cannot be absorbed by training, while retrieval gives fresh, citable context. Behaviour is
+controlled by prompts, response schemas and a few settings (Table~\ref{tab:settings}).
+
+\begin{table}[H]
+\centering
+\caption{Main backend settings (\texttt{backend/.env}) and defaults.}
+\label{tab:settings}
+\small
+\begin{tabular}{|P{4.6cm}|P{2.6cm}|P{5.6cm}|}
+\hline
+\textbf{Setting} & \textbf{Default} & \textbf{Meaning}\\\hline
+\texttt{GEMINI\_API\_KEY} & none & Enables chat, vision and embeddings\\\hline
+\texttt{WINDOW\_MINUTES} & 15 & Aggregation window (must divide 1440)\\\hline
+\texttt{INGEST\_GRACE\_SECONDS} & 90 & Wait for late data before a window is closed\\\hline
+\texttt{INGEST\_INTERVAL\_SECONDS} & 60 & Background indexing period\\\hline
+\texttt{RAG\_TOP\_K} & 6 & Chunks retrieved per question\\\hline
+\texttt{CHAT\_HISTORY\_TURNS} & 6 & Conversation turns sent to the model\\\hline
+\texttt{AGENT\_MAX\_ROUNDS} & 2 & Research agent rounds\\\hline
+\texttt{AGENT\_QUERIES\_PER\_ROUND} & 3 & Search queries per round\\\hline
+\texttt{MAX\_UPLOAD\_MB}, \texttt{VLM\_MAX\_IMAGE\_PX} & 12, 1600 & Photo limits\\\hline
+\texttt{DEVICE\_KEY}, \texttt{API\_KEY} & dev key, none & Rover telemetry key; optional app key\\\hline
+\texttt{FARM\_TIMEZONE}, \texttt{FARM\_REGION} & Asia/Kolkata, India & Time resolution; region added to web searches\\\hline
+\end{tabular}
+\end{table}
+
+\noindent\textbf{Prompting rules for answers.} The farm-answer prompt requires that farm-specific statements come from the context and
+carry a citation; that \texttt{[F\#]} numbers be quoted and not recomputed; that diagnoses be called possible or suspected; that missing
+data be stated plainly with the available data mentioned; that general advice appear only in a final paragraph beginning with
+``General guidance:''; that MQ values never be presented as ppm; that every ``unusual reading'' fact be mentioned even if averages look
+normal; and that switched-off sensors and disconnected periods be reported exactly without estimating values. The model
+returns a structured object (\texttt{answer}, \texttt{cited}, \texttt{used\_general\_knowledge}, \texttt{insufficient\_data},
+\texttt{follow\_ups}).
+
+\section{Project Modules}
+
+\subsection{Rover Firmware}
+
+\noindent\textbf{Arduino Nano.} The sketch (about 12.6\,KB of flash, 608\,bytes of RAM) runs motors with a soft ramp (so the gearboxes are not shocked), a 700\,ms
+command watchdog, an automatic forward stop at 20\,cm (adjustable), and a soil-arm state machine (retracted, deploying, settling,
+deployed, retracting) that lifts the probe before any movement and reports soil only when the arm is deployed, settled and the
+rover is still. Sensors are read at their own periods (DHT11 every 2\,s, ultrasonic every 60\,ms). Each sensor has an enable
+flag; switching an MQ sensor on restarts its 60-second warm-up, and an optional pin drives an electronic switch in its supply line.
+
+\noindent\textbf{UART protocol.} Frames have the form \texttt{\$BODY*CS} at 57600 baud, where CS is the XOR of the body characters in two
+hex digits; frames with a bad checksum are ignored. Commands from the ESP32 are \texttt{D} (drive), \texttt{S} (stop), \texttt{A} (arm),
+\texttt{C} (configure), \texttt{W} (sensor switch) and \texttt{P} (ping); the Nano replies \texttt{K} (acknowledged) or \texttt{E} (rejected).
+Telemetry is sent at 2\,Hz. Example (MQ-2 not fitted):
+
+\begin{lstlisting}
+$T,812,274,610,-1,208,191,435,84,3,7860,56,15,15,15*75
+   seq, temp x10, hum x10, mq2, mq5, mq6, soil x10, distance, arm,
+   battery mV, flags, installed mask, enabled mask, warm mask
+\end{lstlisting}
+
+\noindent\textbf{ESP32-CAM.} It joins the configured Wi-Fi (falling back to its own hotspot), serves the control API on port 80 and the
+MJPEG stream on port 81 from a separate server so that streaming never blocks control, and pushes telemetry. Table~\ref{tab:esp32api}
+lists the API. The stream is VGA at about 14 frames per second; stills are UXGA (1600$\times$1200). The drive watchdog stops the motors
+if no command arrives for 500\,ms, and failed pushes back off exponentially up to two minutes.
+
+\begin{table}[H]
+\centering
+\caption{HTTP API of the ESP32-CAM.}
+\label{tab:esp32api}
+\small
+\begin{tabular}{|c|P{3.5cm}|P{7.6cm}|}
+\hline
+\textbf{Method} & \textbf{Path} & \textbf{Purpose}\\\hline
+GET & \texttt{:81/stream} & MJPEG live video\\\hline
+GET & \texttt{/capture} & One high-resolution JPEG (optional flash)\\\hline
+GET & \texttt{/snapshot} & One JPEG at stream resolution\\\hline
+GET & \texttt{/api/status} & Wi-Fi, Nano link, drive, arm, battery, push state\\\hline
+GET & \texttt{/api/telemetry} & Latest reading in the backend's shape\\\hline
+POST & \texttt{/api/drive} & \texttt{left/right}, \texttt{throttle/steer} or \texttt{dir}, repeated every 100--150\,ms\\\hline
+POST & \texttt{/api/stop} & Stop at once\\\hline
+POST & \texttt{/api/arm} & Deploy or retract the soil probe\\\hline
+GET, POST & \texttt{/api/sensors} & Read or set the per-sensor switches (\texttt{\{"all": false\}} is video-only mode)\\\hline
+POST & \texttt{/api/config} & Obstacle distance and maximum PWM\\\hline
+\end{tabular}
+\end{table}
+
+\subsection{Backend: Ingestion and Knowledge Store}
+
+The ingestion service (Algorithm~\ref{alg:ingest}) and the sync job (Algorithm~\ref{alg:sync}) implement the lifecycle of
+Figure~\ref{fig:lifecycle}. The knowledge store offers one write operation, \emph{upsert a source}, which replaces all chunks of a logical
+source (for example one window or one diagnosis) and skips re-embedding when the content hash is unchanged. Every chunk written
+publishes three activity events (created, embedded, stored), which is how the Live view shows all kinds of chunks.
+
+\begin{algorithm}[H]
+\caption{Ingest a telemetry batch}
+\label{alg:ingest}
+\begin{algorithmic}[1]
+\Require batch with device id, readings, optional switches, receive time $t^{\mathrm{recv}}$
+\State record a heartbeat in the five-minute bucket of $t^{\mathrm{recv}}$
+\ForAll{reading $r$ in the batch}
+  \State $\hat t \gets$ NTP time if valid, else Equation~\ref{eq:time}, else $t^{\mathrm{recv}}$ for a lone reading
+  \If{$\hat t$ is missing or more than 5 minutes in the future} \State reject the values; \textbf{continue} \EndIf
+  \ForAll{(name, value) in $r$}
+    \State normalise the name; reject non-finite or out-of-range values
+    \If{name is soil moisture \textbf{and not} soil valid} \State reject \EndIf
+    \State add (sensor, $\hat t$, value) to the row set
+  \EndFor
+  \If{$r$ carries switches} \State add ($\hat t$, switches) to the switch timeline \EndIf
+\EndFor
+\State add (batch switches, $t^{\mathrm{recv}}$) to the timeline
+\State \textbf{for each} change of a switch state in time order \textbf{do} insert a switch event
+\State insert rows ignoring duplicates; mark the affected windows dirty
+\State \Return counts of accepted, rejected and duplicate values
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{Sync: aggregate, write and embed windows}
+\label{alg:sync}
+\begin{algorithmic}[1]
+\Require current time $t$, flag include\_open
+\State cutoff $\gets t-\Delta-\text{grace}$
+\ForAll{dirty window $w$ in time order}
+  \State closed $\gets$ ($w.\mathrm{start}\le$ cutoff)
+  \If{\textbf{not} closed \textbf{and not} include\_open} \State \textbf{continue} \EndIf
+  \State aggregate the window (Equation~\ref{eq:window})
+  \If{\textbf{not} closed} \State \textbf{continue} \Comment{statistics are current, indexing waits}\EndIf
+  \State reasons $\gets$ why sensors are missing in $w$ (switch and heartbeat records)
+  \State text $\gets$ window chunk from the statistics and reasons
+  \State upsert the chunk (embed unless the hash is unchanged)
+  \State clear the dirty mark only if it was not re-marked meanwhile
+\EndFor
+\ForAll{day touched by a closed window}
+  \State rebuild the daily summary and the sensor on/off log; upsert both
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Pipeline A: Planner, Facts and Retrieval}
+
+\noindent\textbf{Planner.} The planner returns a structured query plan. A rule-based planner with the same output is used when no model
+is available or the call fails, and deterministic backstops correct typical model mistakes (for example, a question about a named past period is
+never ``current status'').
+
+\noindent\textbf{Facts.} The fact builder computes, from SQL over the window table, the latest readings (with their age and a warning if
+stale), the statistics of each requested sensor and period, comparisons and their differences, time-of-day profiles, ``unusual
+reading'' facts for short excursions that an average would hide, linked conditions around a diagnosis (plus or minus one hour), log
+coverage, and the sensor on/off history described in Section~4.3. If a requested sensor has no data, a ``no data'' fact is followed by
+the reason.
+
+\noindent\textbf{Retrieval.} Algorithm~\ref{alg:retrieval} shows the hybrid search. Source types are filtered by intent (only diagnoses
+for diagnosis questions) and sensor chunks by time overlap, while diagnoses and notes are searched across all time.
+
+\begin{algorithm}[H]
+\caption{Hybrid retrieval with Reciprocal Rank Fusion}
+\label{alg:retrieval}
+\begin{algorithmic}[1]
+\Require query text, $k_{\mathrm{top}}$, optional source types, optional time range
+\State $\mathbf q\gets$ normalised embedding of the query (query mode)
+\State $V\gets$ top candidates by cosine distance (HNSW index) under the filters
+\State $T\gets$ top candidates by PostgreSQL full-text rank under the same filters
+\ForAll{chunk $d$ in $V\cup T$}
+  \State score$(d)\gets \sum_{r\in\{V,T\}:\,d\in r} 1/(60+\mathrm{rank}_r(d))$
+\EndFor
+\State \Return the $k_{\mathrm{top}}$ chunks with the highest score, with their vector and lexical ranks
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Pipeline A: Grounded Generation and Streaming}
+
+Algorithm~\ref{alg:answer} gives the answer procedure. The streaming decoder (Algorithm~\ref{alg:stream}) extracts the text of the
+\texttt{answer} property from the partial JSON the model is writing. It handles escape sequences and Unicode surrogate pairs split
+across network chunks. At the end the whole JSON is validated, with one non-streaming regeneration if it is malformed, and the
+final answer replaces the streamed draft.
+
+\begin{algorithm}[H]
+\caption{Answer a farm question}
+\label{alg:answer}
+\begin{algorithmic}[1]
+\Require question, history, time $t$
+\State sync ingestion including the open window
+\State plan $\gets$ query plan (LLM or rules); ranges $\gets$ resolve time tokens in farm time
+\State facts $\gets$ SQL facts for plan.sensors and ranges, with coverage facts
+\State chunks $\gets$ hybrid retrieval of plan.search\_query if plan.search\_knowledge
+\If{plan.link\_conditions} \State add facts for $\pm$1 h around each retrieved diagnosis \EndIf
+\State context $\gets$ facts $\cup$ chunks, numbered \texttt{[F\#]} and \texttt{[K\#]}
+\State out $\gets$ structured LLM answer from context and question (streamed if requested)
+\State remove citations whose identifier is not in the context
+\State \Return answer, cited sources, grounding flags, follow-up questions
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{Incremental decoding of the answer field}
+\label{alg:stream}
+\begin{algorithmic}[1]
+\State buffer $\gets$ empty; state $\gets$ seeking
+\ForAll{text chunk $c$ produced by the model}
+  \State append $c$ to buffer
+  \If{state is seeking \textbf{and} buffer contains \texttt{"answer": "}} \State state $\gets$ inside; position $\gets$ end of match \EndIf
+  \While{state is inside \textbf{and} a complete character is available at position}
+    \State decode one character (handle escapes and surrogate pairs); emit it to the app
+    \If{the character is an unescaped quote} \State state $\gets$ done \EndIf
+  \EndWhile
+\EndFor
+\State parse and validate the whole JSON (one non-streaming retry if invalid)
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Pipeline B: Vision Analysis and Research Agent}
+
+\noindent\textbf{Vision step.} One call with a fixed system prompt returns JSON with the following fields: whether the image is a plant,
+the plant and its part, \texttt{health\_status} (healthy, unhealthy or uncertain), a diagnosis phrased as a possibility, issue
+categories (disease, nutrient deficiency, pest damage, fungal, bacterial or viral infection, environmental stress, physical damage,
+abnormal coloration or morphology), \emph{evidence} (what is directly visible), \emph{assumptions} (what is inferred), a
+differential list, severity, a rough confidence and the image quality. After the call the code re-enforces invariants (a
+non-plant image is always ``uncertain'') and attaches a fixed caveat that the confidence is not calibrated.
+
+\noindent\textbf{Research agent.} Algorithm~\ref{alg:agent} shows the loop. The agent is ``one agent'': a bounded loop in code with
+the model making the decisions, not a tool-calling framework, so it works identically with every provider.
+
+\begin{algorithm}[H]
+\caption{Research agent for a diagnosis}
+\label{alg:agent}
+\begin{algorithmic}[1]
+\Require VLM JSON $a$, search tool, $R_{\max}=2$ rounds, $Q_{\max}=3$ queries per round
+\State results $\gets$ empty; asked $\gets$ empty
+\For{round $=1$ \textbf{to} $R_{\max}$}
+  \State step $\gets$ LLM plan from $a$, the branch policy, asked queries and results so far
+  \State queries $\gets$ new queries from step (first $Q_{\max}$); \textbf{if} round $=1$ and none, use fallback queries
+  \If{step is done (after round 1) \textbf{or} no queries} \State \textbf{break} \EndIf
+  \State run the queries in parallel; keep new URLs only, at most 12 sources; rank institutional sources first
+\EndFor
+\State findings $\gets$ LLM writer from $a$ and the numbered sources \texttt{[W\#]}
+\State remove invalid and invented citations and placeholder rows; \Return findings, sources, trace
+\end{algorithmic}
+\end{algorithm}
+
+\noindent\textbf{Presenting and writing.} The result page shows the plant, the status, the evidence, the confidence with its caveat,
+recapture tips for poor images, the findings and the sources. A ``diagnosis'' chunk and one or more ``agent finding'' chunks are
+written with provenance (URLs, domains, model identifiers, whether the answer was web-grounded). Deleting a diagnosis removes
+the stored image and its chunks.
+
+\subsection{Sensor Switches and Coverage Engine}
+
+The rover reports its switches; the backend stores only changes in \texttt{sensor\_state\_events} and one row per five-minute bucket in
+\texttt{rover\_heartbeats}. The coverage engine (Algorithm~\ref{alg:coverage}) evaluates Equation~\ref{eq:status} for a time range. Consecutive ``on''
+buckets (recorded or no reading) are merged for display, because a probe that only measures while parked alternates between the
+two statuses all the time, which is normal and not a gap. Descriptions list time spans for ranges up to 36 hours and totals for longer ones.
+Rover channels that cannot be switched (distance, battery) are not covered.
+
+\begin{algorithm}[H]
+\caption{Coverage of one sensor switch over a range}
+\label{alg:coverage}
+\begin{algorithmic}[1]
+\Require device, switch $s$, range $[a,b)$ clipped to the current time
+\State load the switch events before $b$, the buckets with heartbeats, and the buckets with readings (any sensor, and sensor $s$)
+\ForAll{five-minute bucket $\beta$ in $[a,b)$}
+  \State assign $\mathrm{st}_s(\beta)$ by Equation~\ref{eq:status}
+\EndFor
+\State merge adjacent buckets with the same status into spans; merge adjacent recorded and no-reading spans
+\State \Return spans, and the text: ``readings recorded \ldots; switched off \ldots; rover not connected for \ldots''
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Live Activity View}
+
+An in-memory log keeps the last 400 events with increasing identifiers. \texttt{GET /live/state} returns the progress of the open window,
+counters, the current switch state and recent events; \texttt{GET /live/stream} streams new events as Server-Sent Events, with a
+heartbeat comment every 15 seconds and resume from an identifier. The Live view shows six boxes (rover sensors, server receives,
+collecting a window, text chunk, embedding, knowledge store) that light up when an event for them arrives and whose connectors
+animate while data flows, a second lane for chat and diagnosis stages, and a feed of recent events.
+
+\subsection{Flutter Mobile Application}
+
+The application has six tabs: \textbf{Overview}, \textbf{Rover} (live MJPEG video, D-pad or joystick with a 120\,ms heartbeat, soil-probe
+control, per-sensor switches with a ``video only'' button, and capture), \textbf{Diagnose} (camera, gallery or rover photo, live job
+stages, results with sources), \textbf{Gaia AI} (both chat modes, streamed answers, citations that open the source, grounding badges,
+follow-up suggestions, a persistent session), \textbf{Sensors} (latest values, charts, an ``off'' badge for switched-off sensors) and
+\textbf{Live}. Services (rover link, backend client, repositories) are created once and provided through an inherited widget.
+The MJPEG decoder cuts frames at the JPEG start and end markers, which works with any camera boundary format. A small
+Server-Sent Events parser handles chunk boundaries, and the chat falls back to the non-streaming endpoint if the server does not
+support streaming. Settings hold the backend and rover addresses, an optional API key and the relay switch.
+
+\subsection{Web Interface, Simulator and Tools}
+
+The backend also serves a browser version of the application (overview, rover, diagnosis, chat, sensors) and a knowledge-store
+inspector that shows the vector, lexical and fused scores of each chunk. A \emph{rover simulator} implements the same HTTP API as the firmware
+(including the sensor switches and heater warm-up), so the whole system can be tested without hardware. \texttt{nano\_console} talks
+the UART protocol to a Nano on USB with automated checks, and \texttt{rover\_check} walks the assembled rover's API. A demonstration
+loader sends sample data through the real API.
+
+\subsection{Delivery}
+
+A GitHub Actions workflow builds the Android APK from the \texttt{frontend} folder on demand and on changes to it. A second workflow runs
+the backend tests (including an embedded PostgreSQL), an offline evaluation, and the application's analysis and tests. Docker Compose starts
+the backend with a \texttt{pgvector} PostgreSQL image.
+
+\section{Tools and Technologies Used}
+
+\begin{table}[H]
+\centering
+\caption{Tools and technologies.}
+\label{tab:tools}
+\small
+\begin{tabular}{|P{3.4cm}|P{9.4cm}|}
+\hline
+\textbf{Area} & \textbf{Tools}\\\hline
+Hardware and firmware & ESP32-CAM, Arduino Nano, Arduino C++, \texttt{arduino-cli}, ArduinoJson, DHT sensor library\\\hline
+Backend & Python 3.12, FastAPI, Uvicorn, SQLAlchemy 2, Pydantic 2, httpx, Jinja2\\\hline
+Database & PostgreSQL 16, pgvector (HNSW, cosine), full-text search (GIN), embedded server through \texttt{pgserver} for development\\\hline
+Generative AI & Gemini API (\texttt{google-genai}), OpenAI-compatible APIs (Groq, Grok, Ollama), DuckDuckGo (\texttt{ddgs}), Tavily\\\hline
+Mobile application & Flutter and Dart, \texttt{http}, \texttt{image\_picker}, \texttt{shared\_preferences}, \texttt{url\_launcher}\\\hline
+Testing & pytest, \texttt{flutter\_test}, fake provider servers, in-process fake Nano, rover simulator\\\hline
+Delivery & GitHub Actions, Docker Compose\\\hline
+Documentation & \LaTeX\ (this report), Markdown project documents\\\hline
+\end{tabular}
+\end{table}
+
+\section{Algorithm Details}
+
+The algorithms of this chapter are collected here with their cost, using $n$ for the readings in a window, $w$ for the windows touched by a
+sync, $m$ for the chunks in the store, and $c$ for the number of model calls.
+
+\begin{table}[H]
+\centering
+\caption{Algorithm summary.}
+\label{tab:algsummary}
+\small
+\begin{tabular}{|P{4.0cm}|P{2.4cm}|P{6.4cm}|}
+\hline
+\textbf{Algorithm} & \textbf{Cost} & \textbf{Notes}\\\hline
+Ingest a batch (Alg.~\ref{alg:ingest}) & $O(r)$ for $r$ values & One bulk insert; duplicates ignored in the database\\\hline
+Sync (Alg.~\ref{alg:sync}) & $O(wn)$ plus embedding & One embedding call per changed chunk\\\hline
+Hybrid retrieval (Alg.~\ref{alg:retrieval}) & $O(\log m)$ vector search & HNSW index; full-text via GIN index\\\hline
+Answer a question (Alg.~\ref{alg:answer}) & 2 model calls & Plan and answer; plus embedding of the query\\\hline
+Answer decoding (Alg.~\ref{alg:stream}) & linear in text length & Constant work per character\\\hline
+Research agent (Alg.~\ref{alg:agent}) & up to 2 plan calls, 1 writer call & Plus 1 vision call; bounded cost\\\hline
+Coverage (Alg.~\ref{alg:coverage}) & $O(b)$ for $b$ buckets & Five-minute resolution\\\hline
+\end{tabular}
+\end{table}

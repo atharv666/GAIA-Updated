@@ -1,0 +1,75 @@
+{
+  "readings": [
+    {
+      "sensor": "temperature",
+      "label": "Air temperature",
+      "unit": "°C",
+      "value": 32.8,
+      "display": "32.8°C",
+      "ts": "2026-10-17T10:56:06.860484+00:00",
+      "age_s": 23,
+      "device_id": "rover-01",
+      "band": "hot",
+      "band_note": "heat stress possible, especially with low soil moisture",
+      "progress": 0.6114285714285714,
+      "rag": true
+    },
+    {
+      "sensor": "humidity",
+      "label": "Relative humidity",
+      "unit": "%",
+      "value": 47.0,
+      "display": "47%",
+      "ts": "2026-10-17T10:56:06.860484+00:00",
+      "age_s": 23,
+      "device_id": "rover-01",
+      "band": "moderate",
+      "band_note": "comfortable for most crops",
+      "progress": 0.47,
+      "rag": true
+    },
+    {
+      "sensor": "soil_moisture",
+      "label": "Soil moisture",
+      "unit": "%",
+      "value": 38.7,
+      "display": "38.7%",
+      "ts": "2026-10-17T10:56:06.860484+00:00",
+      "age_s": 23,
+      "device_id": "rover-01",
+      "band": "adequate",
+      "band_note": "suitable for most crops",
+      "progress": 0.387,
+      "rag": true
+    },
+    {
+      "sensor": "mq5",
+      "label": "MQ5 gas index (LPG / natural gas / methane)",
+      "unit": "ADC",
+      "value": 209.0,
+      "display": "209 ADC",
+      "ts": "2026-10-17T10:56:06.860484+00:00",
+      "age_s": 23,
+      "device_id": "rover-01",
+      "band": "baseline",
+      "band_note": "no unusual methane or natural-gas signal",
+      "progress": 0.20430107526881722,
+      "rag": true
+    },
+    {
+      "sensor": "mq6",
+      "label": "MQ6 gas index (LPG / butane / propane)",
+      "unit": "ADC",
+      "value": 192.0,
+      "display": "192 ADC",
+      "ts": "2026-10-17T10:56:06.860484+00:00",
+      "age_s": 23,
+      "device_id": "rover-01",
+      "band": "baseline",
+      "band_note": "no unusual LPG signal",
+      "progress": 0.187683284457478,
+      "rag": true
+    }
+  ],
+  "server_time": "2026-10-17T10:56:30.796824+00:00"
+}

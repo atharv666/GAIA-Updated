@@ -1,0 +1,15 @@
+\scaledtikz{\begin{tikzpicture}
+\node[box,text width=38mm,minimum height=24mm] (phone) at (0,0) {\textbf{Smartphone}\\Android\\Flutter application (APK)\\built by GitHub Actions};
+\node[box,text width=44mm,minimum height=30mm] (srv) at (9.4,0) {\textbf{Laptop or server}\\FastAPI (uvicorn, port 8000)\\PostgreSQL 16 + pgvector\\uploaded photos on disk\\background ingestion job};
+\node[box,text width=44mm,minimum height=24mm] (rov) at (4.7,-6.0) {\textbf{Rover}\\ESP32-CAM: HTTP port 80,\\MJPEG stream port 81\\Arduino Nano, sensors};
+\node[dsh,text width=32mm] (rt) at (4.7,3.2) {\textbf{Wi-Fi router}\\or rover hotspot};
+\node[gbox,text width=36mm] (gem) at (16.0,1.6) {\textbf{Gemini API}\\(HTTPS)};
+\node[gbox,text width=36mm] (web) at (16.0,-1.6) {\textbf{Web search}\\DuckDuckGo or Tavily\\(HTTPS)};
+\draw[barr] (phone) -- node[lbl,above]{HTTP :8000} (srv);
+\draw[barr] (phone.south) |- node[lbl,pos=0.3,left]{HTTP :80, :81} (rov.west);
+\draw[arr] (rov.east) -| node[lbl,pos=0.8,right]{POST /telemetry} (srv.south);
+\draw[arr] (srv.east) ++(0,0.9) -- (gem.west);
+\draw[arr] (srv.east) ++(0,-0.9) -- (web.west);
+\draw[darr] (phone.north) |- (rt.west);
+\draw[darr] (srv.north) |- (rt.east);
+\end{tikzpicture}}

@@ -1,0 +1,33 @@
+\scaledtikz{\begin{tikzpicture}
+% Mobile application layer
+\node[box,text width=21mm] (a1) at (-5.1,7.2) {Rover control,\\sensor switches};
+\node[box,text width=21mm] (a2) at (-2.55,7.2) {Sensors\\view};
+\node[box,text width=21mm] (a3) at (0,7.2) {Chat\\(streamed)};
+\node[box,text width=21mm] (a4) at (2.55,7.2) {Diagnose};
+\node[box,text width=21mm] (a5) at (5.1,7.2) {Live view};
+\node[zone,fit=(a1)(a2)(a3)(a4)(a5)] (zapp) {};
+\node[zlbl] at (zapp.north) {FLUTTER MOBILE APPLICATION};
+% Backend layer
+\node[box,text width=27mm] (b1) at (-4.8,3.3) {\textbf{Ingestion}\\validate, switches,\\windows, chunks};
+\node[box,text width=27mm] (b2) at (-1.6,3.3) {\textbf{Pipeline A}\\planner, SQL facts,\\hybrid RAG, answer};
+\node[box,text width=27mm] (b3) at (1.6,3.3) {\textbf{Pipeline B}\\VLM, research\\agent, writer};
+\node[box,text width=27mm] (b4) at (4.8,3.3) {\textbf{Live activity}\\event log, SSE\\stream, state};
+\node[zone,fit=(b1)(b2)(b3)(b4)] (zback) {};
+\node[zlbl] at (zback.north) {BACKEND SERVICES (FASTAPI, PYTHON)};
+% Data layer
+\node[db,text width=24mm] (d1) at (-3.8,-0.9) {Sensor log\\readings, windows,\\switch events};
+\node[db,text width=24mm] (d2) at (0,-0.9) {\textbf{Knowledge}\\\textbf{chunks}\\vector + text};
+\node[db,text width=24mm] (d3) at (3.8,-0.9) {Diagnoses,\\chat memory,\\documents};
+\node[zone,fit=(d1)(d2)(d3)] (zdata) {};
+\node[zlbl] at (zdata.south) {POSTGRESQL 16 + PGVECTOR};
+% Rover and external services
+\node[gbox,text width=21mm] (rover) at (-9.2,3.3) {\textbf{Rover}\\ESP32-CAM,\\Nano, sensors};
+\node[gbox,text width=25mm] (gem) at (9.6,4.4) {\textbf{Gemini API}\\chat, vision,\\embeddings};
+\node[gbox,text width=25mm] (web) at (9.6,2.0) {\textbf{Web search}\\DuckDuckGo or\\Tavily};
+\draw[arr] (zapp) -- node[lbl,right]{HTTP, SSE} (zback);
+\draw[arr] (zback) -- (zdata);
+\draw[arr] (rover) -- node[lbl,above]{telemetry} (zback.west);
+\draw[barr] (rover.north) |- node[lbl,pos=0.75,above]{direct: control, video, stills} (a1.west);
+\draw[arr] (zback.east |- gem) -- (gem.west);
+\draw[arr] (zback.east |- web) -- (web.west);
+\end{tikzpicture}}

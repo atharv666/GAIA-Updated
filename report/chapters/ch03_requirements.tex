@@ -1,0 +1,179 @@
+\chapter{Requirements Specification}
+
+\section{Hardware Requirements}
+
+\subsection{Rover Components}
+
+Table~\ref{tab:hw} lists the hardware used for the rover and the computing devices around it. Figure~\ref{fig:hwblock}
+shows how the parts are connected.
+
+\begin{table}[H]
+\centering
+\caption{Hardware components.}
+\label{tab:hw}
+\small
+\begin{tabular}{|P{3.6cm}|c|P{7.2cm}|}
+\hline
+\textbf{Component} & \textbf{Qty} & \textbf{Role}\\\hline
+ESP32-CAM (AI-Thinker, OV2640 camera, PSRAM) & 1 & Wi-Fi, HTTP API, MJPEG live video, high-resolution stills, telemetry push to the backend~\cite{esp32cam}\\\hline
+Arduino Nano (ATmega328P) & 2 & Nano 1 reads the sensors, drives the soil-probe servo and the motor driver and talks to the ESP32. Nano 2 is dedicated to the HC-SR04 ultrasonic sensor in the build; see the note below\\\hline
+DHT11 sensor & 1 & Air temperature and relative humidity (about $\pm$2\,$^{\circ}$C and $\pm$5\,\% RH)\\\hline
+MQ-5 and MQ-6 gas sensors & 1 + 1 & Natural gas / methane and LPG / butane, as uncalibrated relative indices\\\hline
+Soil-moisture probe & 1 & Soil moisture, mounted on a servo-controlled arm and read only when the rover is parked\\\hline
+Servo motor (about 90$^{\circ}$ travel) & 1 & Lowers and raises the soil probe\\\hline
+HC-SR04 ultrasonic sensor & 1 & Obstacle distance for smooth navigation and automatic stop\\\hline
+DC geared motors, 300 RPM & 2 & Locomotion\\\hline
+L298N dual motor driver & 1 & Drives the two motors from the battery\\\hline
+Li-ion cells, 3.7 V & 4 & 2S2P pack: about 7.4\,V nominal and 8.4\,V fully charged\\\hline
+5 V regulator and electronic switches & 1 + 2 & Supply for the controllers; switches in the MQ-sensor supply lines (see below)\\\hline
+Smartphone (Android) & 1 & Runs the Flutter application\\\hline
+Laptop or server & 1 & Runs the backend, database and (optionally) the demonstration data loader\\\hline
+Wi-Fi router, or the rover's own hotspot & 1 & Network between phone, rover and backend\\\hline
+\end{tabular}
+\end{table}
+
+\noindent\textbf{Note on the controllers.} The firmware described in this report reads the ultrasonic sensor on the same
+Nano as the other sensors. The second Nano of the build is therefore a spare or a future extension: if the
+ultrasonic sensor is moved to it, the ESP32 would need a second UART link, while the backend and the application are
+unaffected because they only see the telemetry.
+
+\begin{figure}[H]
+\centering
+\input{figures/diagrams/hwblock}
+\caption{Hardware block diagram of the rover.}
+\label{fig:hwblock}
+\end{figure}
+
+\subsection{Power and Safety Constraints}
+
+The following constraints, which come from the electrical design, were taken into account:
+
+\begin{itemize}
+\item The 2S2P pack gives about 7.4\,V nominal and 8.4\,V when full. It needs suitable cell protection, charging and wiring,
+      and a current rating appropriate for the motors.
+\item The 5 V output of the L298N board can be used as a test supply but is not guaranteed to stay stable under video
+      streaming load. The exact board must be measured under load, and a dedicated regulator is recommended.
+\item The two MQ heaters alone can draw about 0.38\,A at 5\,V, before module circuitry or servo current. A Nano fed from a 9\,V
+      battery cannot be assumed to supply the heaters and the servo through its on-board regulator.
+\item Separate 5\,V outputs must not be joined. Interconnected boards need a common ground, and the 5\,V Nano transmit line must
+      be level-shifted before it enters an ESP32 pin.
+\item A software toggle that merely stops reading a sensor does not remove its power consumption. Power is saved only if the
+      supply itself is switched, which requires an electronic switch (relay or logic-level MOSFET module) driven by a
+      controller pin. A sensor must never be powered directly from a microcontroller pin.
+\end{itemize}
+
+\section{Software Requirements}
+
+\begin{table}[H]
+\centering
+\caption{Software and versions used.}
+\label{tab:sw}
+\small
+\begin{tabular}{|P{3.2cm}|P{3.4cm}|P{6.2cm}|}
+\hline
+\textbf{Layer} & \textbf{Software} & \textbf{Purpose}\\\hline
+Backend runtime & Python 3.12, FastAPI, Uvicorn~\cite{fastapi} & REST and streaming API\\\hline
+Data access & SQLAlchemy 2, psycopg 3, Pydantic 2 & ORM, database driver, schema validation\\\hline
+Database & PostgreSQL 16, pgvector~\cite{pgvector} & Relational data, vector index (HNSW, cosine) and full-text index (GIN)\\\hline
+Generative AI SDK & google-genai, httpx & Gemini API, and OpenAI-compatible providers~\cite{geminiapi}\\\hline
+Web search & ddgs (DuckDuckGo), Tavily API & Keyless default, optional keyed search~\cite{tavily}\\\hline
+Images and documents & Pillow, pypdf & Image validation and resizing; PDF text extraction\\\hline
+Mobile application & Flutter 3.35, Dart, http, image\_picker, shared\_preferences & Android application~\cite{flutter}\\\hline
+Firmware & Arduino core (AVR 1.8.8, ESP32 3.3.12), ArduinoJson 7, DHT sensor library, Servo & Nano and ESP32-CAM sketches\\\hline
+Quality & pytest, flutter\_test, arduino-cli & Automated tests and firmware compilation\\\hline
+Delivery & GitHub Actions, Docker Compose & APK build, test runs, backend and database containers\\\hline
+\end{tabular}
+\end{table}
+
+An API key for the Gemini API is required for the default configuration; it is placed in the backend's \texttt{.env} file and never
+in the mobile application. Web search needs no key by default.
+
+\section{Functional Requirements}
+
+{\small
+\begin{longtable}{|c|P{12.2cm}|}
+\caption{Functional requirements.}\label{tab:fr}\\
+\hline
+\textbf{ID} & \textbf{Requirement}\\\hline
+\endfirsthead
+\hline
+\textbf{ID} & \textbf{Requirement}\\\hline
+\endhead
+FR1 & The rover shall stream live video and provide a high-resolution still on request.\\\hline
+FR2 & The app shall drive the rover with a D-pad or joystick, with an automatic stop if commands cease.\\\hline
+FR3 & The rover shall measure temperature, humidity, gas indices and (when parked with the probe down) soil moisture.\\\hline
+FR4 & The rover shall push timestamped readings to the backend over Wi-Fi, buffering them while the backend is unreachable.\\\hline
+FR5 & Each sensor shall be switchable on or off from the app; the backend shall record every switch change.\\\hline
+FR6 & The backend shall validate readings, reject invalid values and store them without duplicates.\\\hline
+FR7 & The backend shall aggregate readings into 15-minute windows and day summaries and write them as text chunks with embeddings.\\\hline
+FR8 & ``Query my farm'' shall answer from exact statistics and retrieved chunks, citing every farm-specific statement.\\\hline
+FR9 & The assistant shall explain missing data (switched off, no reading, rover not connected) from recorded facts.\\\hline
+FR10 & ``Open-ended'' mode shall answer with cited web search results.\\\hline
+FR11 & Chat answers shall be streamed to the app as they are written.\\\hline
+FR12 & The app shall accept a photograph from the rover camera, the phone camera or the gallery for diagnosis.\\\hline
+FR13 & Diagnosis shall return strict JSON from one vision-language model call (plant, status, evidence, confidence).\\\hline
+FR14 & Diagnosis shall run one web research agent and present findings with sources.\\\hline
+FR15 & Diagnosis findings shall be written one way into the shared knowledge store; deletion shall remove them.\\\hline
+FR16 & The app shall show a Live view of readings arriving, windows closing and chunks being written, embedded and stored.\\\hline
+FR17 & The backend shall expose a REST API for the above and a small web interface.\\\hline
+FR18 & The system shall run without any API key (reduced mode) and report which capabilities are unavailable.\\\hline
+\end{longtable}
+}
+
+\section{Non-Functional Requirements}
+
+{\small
+\begin{longtable}{|c|P{2.6cm}|P{9.4cm}|}
+\caption{Non-functional requirements.}\label{tab:nfr}\\
+\hline
+\textbf{ID} & \textbf{Quality} & \textbf{Requirement}\\\hline
+\endfirsthead
+\hline
+\textbf{ID} & \textbf{Quality} & \textbf{Requirement}\\\hline
+\endhead
+NFR1 & Correctness & Every number in a farm answer shall come from code, and citation identifiers that are not in the retrieved context shall be removed.\\\hline
+NFR2 & Honesty & Model confidence shall be shown as a rough, uncalibrated indicator, and diagnoses shall be phrased as possibilities.\\\hline
+NFR3 & Independence & Pipeline B shall not read sensor or chat tables, and Pipeline A shall not see image pixels; the only link is the one-way write.\\\hline
+NFR4 & Responsiveness & The first streamed text shall appear without waiting for the whole answer; slow operations shall not block an HTTP request.\\\hline
+NFR5 & Robustness & Provider errors, rate limits and lost connections shall produce a clear message or a retry, not a crash.\\\hline
+NFR6 & Safety & Drive commands shall time out, motion shall stop at obstacles, and no exact pesticide doses shall be given.\\\hline
+NFR7 & Security and privacy & Telemetry shall need a device key; an optional API key shall protect the API; deleting a diagnosis shall delete its image and chunks.\\\hline
+NFR8 & Portability & The backend shall run on Windows, Linux and Docker, and the AI provider shall be changeable by configuration only.\\\hline
+NFR9 & Maintainability & Automated tests shall cover ingestion, retrieval, both pipelines, provider contracts and the app.\\\hline
+NFR10 & Battery awareness & Sensors shall be individually switchable, and MQ warm-up shall restart whenever a gas sensor is powered on.\\\hline
+\end{longtable}
+}
+
+\section{Generative AI Model Requirements}
+
+\begin{table}[H]
+\centering
+\caption{Model roles and requirements.}
+\label{tab:models}
+\small
+\begin{tabular}{|P{2.5cm}|P{4.4cm}|P{5.9cm}|}
+\hline
+\textbf{Role} & \textbf{Requirement} & \textbf{Default choice}\\\hline
+Chat and planning LLM & Strict JSON output against a schema, streaming, low latency, adequate reasoning over short contexts & Gemini 2.5 Flash~\cite{gemini25}\\\hline
+Vision-language model & Image input, strict JSON output with evidence and uncertainty fields & Gemini 2.5 Flash~\cite{gemini25}\\\hline
+Embedding model & Fixed 768-dimension vectors, useful for retrieval, query and document modes & gemini-embedding-001~\cite{lee2025geminiembedding}, L2-normalised; offline hashing fallback\\\hline
+Web search & Titles, URLs and snippets; no key required for the default & DuckDuckGo (ddgs), or Tavily if a key is set\\\hline
+Alternatives & Selected by configuration only, without code changes & OpenAI-compatible providers: Groq, xAI Grok, local Ollama\\\hline
+\end{tabular}
+\end{table}
+
+\section{Dataset / Knowledge-Base Requirements}
+
+GAIA does not train a model, so it needs no training dataset. It needs a \emph{knowledge base} and, for evaluation, labelled data:
+
+\begin{itemize}
+\item \textbf{Sensor log.} Long-format readings (device, sensor, time, value) with a registry that defines each sensor's unit, valid range and
+      interpretation bands. New sensor keys are accepted without code changes.
+\item \textbf{Knowledge chunks.} Text with a 768-dimension embedding, a source type, a source identifier and optional start and end times.
+      Source types are 15-minute windows, daily summaries, sensor on/off logs, diagnoses, agent findings, farmer notes and documents.
+\item \textbf{Evaluation data.} A deterministic synthetic farm (three days of rover sessions with a planted gas spike, a
+      diagnosis and farmer notes) whose ground truth is computed directly from the raw readings, and a seeded sample of labelled
+      PlantVillage leaf photographs for the vision step~\cite{mohanty2016plantvillage,hughes2015plantvillage}.
+\item \textbf{Demonstration data.} Four days of synthetic rover sessions, five farmer notes, three farm documents and four
+      freely licensed leaf photographs, loaded through the real API.
+\end{itemize}

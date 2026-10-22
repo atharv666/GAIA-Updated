@@ -1,0 +1,54 @@
+\clearpage
+\chapter*{Appendix A: Paper Publication Details}
+\addcontentsline{toc}{chapter}{Appendix A: Paper Publication Details}
+
+\placeholderblock{Add here the details of the paper (conference or journal name, comments of reviewers, certificate and the paper itself),
+the online published paper and certificates of participation in conferences, or the draft paper; or the patent filing documents; or the
+project event participation certificates, as applicable.}
+
+\begin{table}[H]
+\centering
+\caption{Publication details (to be filled).}
+\small
+\begin{tabular}{|P{4.0cm}|P{8.6cm}|}
+\hline
+\textbf{Item} & \textbf{Details}\\\hline
+Paper title & \blank{6cm}\\\hline
+Conference or journal & \blank{6cm}\\\hline
+Status (draft, submitted, accepted, published) & \blank{6cm}\\\hline
+Reviewer comments & \blank{6cm}\\\hline
+Certificate or proof & \blank{6cm}\\\hline
+\end{tabular}
+\end{table}
+
+\clearpage
+\chapter*{Appendix B: Plagiarism Report}
+\addcontentsline{toc}{chapter}{Appendix B: Plagiarism Report}
+
+\placeholderblock{Attach the plagiarism (similarity) check report of this project report here, generated with a good-quality similarity-check
+tool and verified by the guide. The similarity must be below 15\,\%.}
+
+\clearpage
+\chapter*{Appendix C: REST API Summary}
+\addcontentsline{toc}{chapter}{Appendix C: REST API Summary}
+
+All backend endpoints are under \texttt{/api/v1}. Endpoints other than \texttt{/health} and \texttt{POST /telemetry} require the
+\texttt{X-API-Key} header only when an API key is configured; telemetry needs the \texttt{X-Device-Key} header.
+
+\begin{table}[H]
+\centering
+\caption{Backend endpoints.}
+\small
+\begin{tabular}{|P{2.5cm}|P{10.3cm}|}
+\hline
+\textbf{Area} & \textbf{Endpoints}\\\hline
+Telemetry & \texttt{POST /telemetry} (readings, switches or a heartbeat), \texttt{GET /telemetry/latest}, \texttt{/telemetry/sensor-state}, \texttt{/telemetry/history}, \texttt{/telemetry/summary}, \texttt{GET /sensors}\\\hline
+Pipeline A & \texttt{POST /chat}, \texttt{POST /chat/stream} (SSE: session, stage, delta, final, error), \texttt{GET /chat/sessions}, \texttt{/chat/sessions/\{id\}}\\\hline
+Pipeline B & \texttt{POST /diagnoses} (image upload, returns a job), \texttt{POST /diagnoses/from-rover}, \texttt{GET /diagnoses}, \texttt{/diagnoses/\{id\}}, \texttt{/diagnoses/\{id\}/image}, \texttt{DELETE /diagnoses/\{id\}}\\\hline
+Knowledge & \texttt{GET /knowledge}, \texttt{/knowledge/search}, \texttt{/knowledge/stats}, \texttt{POST /knowledge/notes}, \texttt{POST /knowledge/documents}, \texttt{GET} and \texttt{DELETE /knowledge/documents}\\\hline
+Ingestion & \texttt{POST /ingest/sync}, \texttt{/ingest/reindex}, \texttt{/ingest/digest}, \texttt{GET /ingest/status}\\\hline
+Live view & \texttt{GET /live/state}, \texttt{GET /live/stream} (SSE of activity events)\\\hline
+Rover relay & \texttt{GET /rover/status}, \texttt{/rover/telemetry}, \texttt{/rover/capture}, \texttt{/rover/sensors}; \texttt{POST /rover/drive}, \texttt{/rover/stop}, \texttt{/rover/arm}, \texttt{/rover/sensors}, \texttt{/rover/telemetry/pull}\\\hline
+System & \texttt{GET /health}, \texttt{/config}, \texttt{/overview}\\\hline
+\end{tabular}
+\end{table}

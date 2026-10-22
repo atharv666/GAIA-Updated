@@ -1,0 +1,339 @@
+{
+  "summary": {
+    "cases": 10,
+    "planner_accuracy": 1.0,
+    "numeric_recall": 1.0,
+    "citation_accuracy": 1.0,
+    "keyword_accuracy": 1.0,
+    "answers_with_citations": 1.0,
+    "median_latency_ms": 11.5,
+    "llm": "none:none",
+    "embedder": "hashing:hashing-v1:768"
+  },
+  "cases": [
+    {
+      "question": "What was the average soil moisture today?",
+      "planner": "heuristic",
+      "planner_ok": true,
+      "numbers_expected": [
+        "27.8"
+      ],
+      "numbers_found": [
+        "27.8"
+      ],
+      "cited_types": [
+        "farm_note",
+        "sensor_daily",
+        "sensor_profile",
+        "sensor_stats"
+      ],
+      "citations_ok": true,
+      "keywords_ok": true,
+      "grounding": {
+        "farm_data": true,
+        "knowledge_store": true,
+        "general_knowledge": false,
+        "web": false,
+        "insufficient_data": false
+      },
+      "llm_used": false,
+      "latency_ms": 22,
+      "timings_ms": {
+        "ingest": 0,
+        "plan": 4,
+        "retrieve": 16,
+        "generate": 0
+      },
+      "answer": "**AI model not configured — showing the retrieved farm data directly.**\n\n- Soil moisture today (Sun 15 Jun 2025, 00:00–15:00): average 27.8%, minimum 25.8% at 08:56, maximum 29.6% at 07:28; 120 readings in 12 × 15-min windows between 06:05 and 08:59. Most recent value in this period: 26.2% at 08:59. The average falls in the 'adequate' band (suitable for most crops). [F1]\n- Soil moisture today, average by time of day: early morning 28.1%, morning 27.3%. Overall it went from 28.1% to 27.3% (down 0.7 percentage points). [F2]\n- Daily sensor summary · Sun 15 Jun 2025 · rover-01: Daily field summary for Sunday 15 June 2025 from rover-01. Data covers 06:00–09:00 farm time (12 windows, 1020 readings).\nAir temperature: daily average 24.7°C (comfortable); lowest 22.3°C at 06:00; highest 27.2°C at 08:41.\n  By time of day: early morning 24.0°C, morning 26.1°C.\n… [K1]\n- Planting log: Tomato variety Arka Rakshak was planted in the north plot on 2 June.… [K2]\n- Biogas unit: The biogas digester is next to the cattle shed in the east corner of the farm.… [K3]"
+    },
+    {
+      "question": "How humid was my field this morning?",
+      "planner": "heuristic",
+      "planner_ok": true,
+      "numbers_expected": [
+        "73"
+      ],
+      "numbers_found": [
+        "73"
+      ],
+      "cited_types": [
+        "farm_note",
+        "sensor_daily",
+        "sensor_profile",
+        "sensor_stats"
+      ],
+      "citations_ok": true,
+      "keywords_ok": true,
+      "grounding": {
+        "farm_data": true,
+        "knowledge_store": true,
+        "general_knowledge": false,
+        "web": false,
+        "insufficient_data": false
+      },
+      "llm_used": false,
+      "latency_ms": 11,
+      "timings_ms": {
+        "ingest": 0,
+        "plan": 0,
+        "retrieve": 9,
+        "generate": 0
+      },
+      "answer": "**AI model not configured — showing the retrieved farm data directly.**\n\n- Relative humidity this morning (Sun 15 Jun 2025, 05:00–12:00): average 73%, minimum 64% at 08:57, maximum 82% at 06:13; 180 readings in 12 × 15-min windows between 06:00 and 08:59. Most recent value in this period: 66% at 08:59. The average falls in the 'humid' band (watch for prolonged leaf wetness). [F1]\n- Relative humidity this morning, average by time of day: early morning 75%, morning 68%. Overall it went from 75% to 68% (down 6 percentage points). [F2]\n- Daily sensor summary · Sun 15 Jun 2025 · rover-01: Daily field summary for Sunday 15 June 2025 from rover-01. Data covers 06:00–09:00 farm time (12 windows, 1020 readings).\nAir temperature: daily average 24.7°C (comfortable); lowest 22.3°C at 06:00; highest 27.2°C at 08:41.\n  By time of day: early morning 24.0°C, morning 26.1°C.\n… [K1]\n- Planting log: Tomato variety Arka Rakshak was planted in the north plot on 2 June.… [K2]\n- Biogas unit: The biogas digester is next to the cattle shed in the east corner of the farm.… [K3]"
+    },
+    {
+      "question": "Was the soil moisture lower than yesterday?",
+      "planner": "heuristic",
+      "planner_ok": true,
+      "numbers_expected": [
+        "27.8",
+        "37.6"
+      ],
+      "numbers_found": [
+        "27.8",
+        "37.6"
+      ],
+      "cited_types": [
+        "farm_note",
+        "sensor_comparison",
+        "sensor_daily",
+        "sensor_stats"
+      ],
+      "citations_ok": true,
+      "keywords_ok": true,
+      "grounding": {
+        "farm_data": true,
+        "knowledge_store": true,
+        "general_knowledge": false,
+        "web": false,
+        "insufficient_data": false
+      },
+      "llm_used": false,
+      "latency_ms": 13,
+      "timings_ms": {
+        "ingest": 0,
+        "plan": 0,
+        "retrieve": 11,
+        "generate": 0
+      },
+      "answer": "**AI model not configured — showing the retrieved farm data directly.**\n\n- Soil moisture today (Sun 15 Jun 2025, 00:00–15:00): average 27.8%, minimum 25.8% at 08:56, maximum 29.6% at 07:28; 120 readings in 12 × 15-min windows between 06:05 and 08:59. Most recent value in this period: 26.2% at 08:59. The average falls in the 'adequate' band (suitable for most crops). [F1]\n- Soil moisture yesterday (Sat 14 Jun 2025, 00:00–24:00): average 37.6%, minimum 31.3% at 18:27, maximum 42.6% at 07:26; 220 readings in 22 × 15-min windows between 06:05 and 18:29. Most recent value in this period: 32.2% at 18:29. The average falls in the 'adequate' band (suitable for most crops). [F2]\n- Comparison of soil moisture: the average today (27.8%) is 9.8 percentage points lower than yesterday (37.6%), i.e. 26% lower in relative terms. Range today: 25.8%–29.6%; range yesterday: 31.3%–42.6%. [F3]\n- Daily sensor summary · Sat 14 Jun 2025 · rover-01: Daily field summary for Saturday 14 June 2025 from rover-01. Data covers 06:00–09:00 and 16:00–18:30 farm time (22 windows, 1870 readings).\nAir temperature: daily average 28.0°C (comfortable); lowest 22.4°C at 06:02; highest 33.7°C at 16:11.\n  By time of day: early morning 24.1°C… [K1]\n- Daily sensor summary · Sun 15 Jun 2025 · rover-01: Daily field summary for Sunday 15 June 2025 from rover-01. Data covers 06:00–09:00 farm time (12 windows, 1020 readings).\nAir temperature: daily average 24.7°C (comfortable); lowest 22.3°C at 06:00; highest 27.2°C at 08:41.\n  By time of day: early morning 24.0°C, morning 26.1°C.\n… [K2]\n- Planting log: Tomato variety Arka Rakshak was planted in the north plot on 2 June.… [K3]"
+    },
+    {
+      "question": "What was the highest temperature yesterday?",
+      "planner": "heuristic",
+      "planner_ok": true,
+      "numbers_expected": [
+        "33.7"
+      ],
+      "numbers_found": [
+        "33.7"
+      ],
+      "cited_types": [
+        "farm_note",
+        "sensor_daily",
+        "sensor_profile",
+        "sensor_stats"
+      ],
+      "citations_ok": true,
+      "keywords_ok": true,
+      "grounding": {
+        "farm_data": true,
+        "knowledge_store": true,
+        "general_knowledge": false,
+        "web": false,
+        "insufficient_data": false
+      },
+      "llm_used": false,
+      "latency_ms": 11,
+      "timings_ms": {
+        "ingest": 0,
+        "plan": 0,
+        "retrieve": 9,
+        "generate": 0
+      },
+      "answer": "**AI model not configured — showing the retrieved farm data directly.**\n\n- Air temperature yesterday (Sat 14 Jun 2025, 00:00–24:00): average 28.0°C, minimum 22.4°C at 06:02, maximum 33.7°C at 16:11; 330 readings in 22 × 15-min windows between 06:00 and 18:29. Most recent value in this period: 30.6°C at 18:29. The average falls in the 'comfortable' band (within the comfortable range for most crops). [F1]\n- Air temperature yesterday, average by time of day: early morning 24.1°C, morning 26.2°C, afternoon 32.6°C, evening 31.5°C. Overall it went from 24.1°C to 31.5°C (up 7.4 °C). [F2]\n- Daily sensor summary · Sat 14 Jun 2025 · rover-01: Daily field summary for Saturday 14 June 2025 from rover-01. Data covers 06:00–09:00 and 16:00–18:30 farm time (22 windows, 1870 readings).\nAir temperature: daily average 28.0°C (comfortable); lowest 22.4°C at 06:02; highest 33.7°C at 16:11.\n  By time of day: early morning 24.1°C… [K1]\n- Biogas unit: The biogas digester is next to the cattle shed in the east corner of the farm.… [K2]\n- Planting log: Tomato variety Arka Rakshak was planted in the north plot on 2 June.… [K3]"
+    },
+    {
+      "question": "Any unusual gas readings in the last 3 days?",
+      "planner": "heuristic",
+      "planner_ok": true,
+      "numbers_expected": [
+        "495"
+      ],
+      "numbers_found": [
+        "495"
+      ],
+      "cited_types": [
+        "sensor_daily",
+        "sensor_profile",
+        "sensor_stats"
+      ],
+      "citations_ok": true,
+      "keywords_ok": true,
+      "grounding": {
+        "farm_data": true,
+        "knowledge_store": true,
+        "general_knowledge": false,
+        "web": false,
+        "insufficient_data": false
+      },
+      "llm_used": false,
+      "latency_ms": 34,
+      "timings_ms": {
+        "ingest": 0,
+        "plan": 0,
+        "retrieve": 32,
+        "generate": 0
+      },
+      "answer": "**AI model not configured — showing the retrieved farm data directly.**\n\n- MQ2 gas index (smoke / combustible gases) the last 3 days (Fri 13 Jun 00:00 – Sun 15 Jun 15:00): average 178 ADC, minimum 135 ADC at Fri 13 Jun 08:52, maximum 304 ADC at Sat 14 Jun 16:01; 840 readings in 56 × 15-min windows between Fri 13 Jun 06:00 and Sun 15 Jun 08:59. Most recent value in this period: 175 ADC at Sun 15 Jun 08:59. The average falls in the 'baseline' band (no unusual smoke or combustible gas signal). (Uncalibrated relative gas index, not ppm.) [F1]\n- MQ5 gas index (LPG / natural gas / methane) the last 3 days (Fri 13 Jun 00:00 – Sun 15 Jun 15:00): average 223 ADC, minimum 168 ADC at Sat 14 Jun 06:27, maximum 495 ADC at Sat 14 Jun 16:35; 840 readings in 56 × 15-min windows between Fri 13 Jun 06:00 and Sun 15 Jun 08:59. Most recent value in this period: 235 ADC at Sun 15 Jun 08:59. The average falls in the 'baseline' band (no unusual methane or natural-gas signal). (Uncalibrated relative gas index, not ppm.) [F2]\n- MQ6 gas index (LPG / butane / propane) the last 3 days (Fri 13 Jun 00:00 – Sun 15 Jun 15:00): average 202 ADC, minimum 150 ADC at Fri 13 Jun 17:17, maximum 372 ADC at Sat 14 Jun 16:23; 840 readings in 56 × 15-min windows between Fri 13 Jun 06:00 and Sun 15 Jun 08:59. Most recent value in this period: 192 ADC at Sun 15 Jun 08:59. The average falls in the 'baseline' band (no unusual LPG signal). (Uncalibrated relative gas index, not ppm.) [F3]\n- MQ2 gas index (smoke / combustible gases) the last 3 days, average by day: Fri 13 Jun 170 ADC, Sat 14 Jun 189 ADC, Sun 15 Jun 170 ADC. Overall it went from 170 ADC to 170 ADC (down 0 ADC). [F4]\n- MQ5 gas index (LPG / natural gas / methane) the last 3 days, average by day: Fri 13 Jun 204 ADC, Sat 14 Jun 252 ADC, Sun 15 Jun 205 ADC. Overall it went from 204 ADC to 205 ADC (up 1 ADC). [F5]\n- MQ6 gas index (LPG / butane / propane) the last 3 days, average by day: Fri 13 Jun 190 ADC, Sat 14 Jun 219 ADC, Sun 15 Jun 191 ADC. Overall it went from 190 ADC to 191 ADC (up 1 ADC). [F6]\n- Daily sensor summary · Sun 15 Jun 2025 · rover-01: Daily field summary for Sunday 15 June 2025 from rover-01. Data covers 06:00–09:00 farm time (12 windows, 1020 readings).\nAir temperature: daily average 24.7°C (comfortable); lowest 22.3°C at 06:00; highest 27.2°C at 08:41.\n  By time of day: early morning 24.0°C, morning 26.1°C.\n… [K1]\n- Daily sensor summary · Fri 13 Jun 2025 · rover-01: Daily field summary for Friday 13 June 2025 from rover-01. Data covers 06:00–09:00 and 16:00–18:30 farm time (22 windows, 1870 readings).\nAir temperature: daily average 28.0°C (comfortable); lowest 22.1°C at 06:04; highest 33.3°C at 16:08.\n  By time of day: early morning 24.0°C, … [K2]\n- Daily sensor summary · Sat 14 Jun 2025 · rover-01: Daily field summary for Saturday 14 June 2025 from rover-01. Data covers 06:00–09:00 and 16:00–18:30 farm time (22 windows, 1870 readings).\nAir temperature: daily average 28.0°C (comfortable); lowest 22.4°C at 06:02; highest 33.7°C at 16:11.\n  By time of day: early morning 24.1°C… [K3]"
+    },
+    {
+      "question": "What crop problems have been identified in my field?",
+      "planner": "heuristic",
+      "planner_ok": true,
+      "numbers_expected": [],
+      "numbers_found": [],
+      "cited_types": [
+        "agent_finding",
+        "diagnosis"
+      ],
+      "citations_ok": true,
+      "keywords_ok": true,
+      "grounding": {
+        "farm_data": false,
+        "knowledge_store": true,
+        "general_knowledge": false,
+        "web": false,
+        "insufficient_data": false
+      },
+      "llm_used": false,
+      "latency_ms": 8,
+      "timings_ms": {
+        "ingest": 0,
+        "plan": 0,
+        "retrieve": 6,
+        "generate": 0
+      },
+      "answer": "**AI model not configured — showing the retrieved farm data directly.**\n\n- Crop diagnosis · Tomato · unhealthy · Sun 15 Jun 2025 07:30: On Sun 15 Jun 2025 07:30 (farm time) GAIA's visual AI assessed a photo of a Tomato leaf (rover capture).\nHealth status: unhealthy (possible issue, not confirmed). Assessment: Possible early blight.\nIssue categories: fungal infection, disease.\nVisual evidence: Brown lesions with c… [K1]\n- Agricultural information · Tomato · Possible early blight: Agricultural information found by GAIA's search agent on Sun 15 Jun 2025 07:30 for Tomato (Possible early blight; status unhealthy).\nSummary: Likely early blight; remove infected leaves and improve airflow (extension.umn.edu).\nAbout the suspected condition: Early blight is a fung… [K2]"
+    },
+    {
+      "question": "What treatment did the system find for the tomato problem?",
+      "planner": "heuristic",
+      "planner_ok": true,
+      "numbers_expected": [],
+      "numbers_found": [],
+      "cited_types": [
+        "agent_finding",
+        "diagnosis"
+      ],
+      "citations_ok": true,
+      "keywords_ok": true,
+      "grounding": {
+        "farm_data": false,
+        "knowledge_store": true,
+        "general_knowledge": false,
+        "web": false,
+        "insufficient_data": false
+      },
+      "llm_used": false,
+      "latency_ms": 5,
+      "timings_ms": {
+        "ingest": 0,
+        "plan": 0,
+        "retrieve": 4,
+        "generate": 0
+      },
+      "answer": "**AI model not configured — showing the retrieved farm data directly.**\n\n- Agricultural information · Tomato · Possible early blight: Agricultural information found by GAIA's search agent on Sun 15 Jun 2025 07:30 for Tomato (Possible early blight; status unhealthy).\nSummary: Likely early blight; remove infected leaves and improve airflow (extension.umn.edu).\nAbout the suspected condition: Early blight is a fung… [K1]\n- Crop diagnosis · Tomato · unhealthy · Sun 15 Jun 2025 07:30: On Sun 15 Jun 2025 07:30 (farm time) GAIA's visual AI assessed a photo of a Tomato leaf (rover capture).\nHealth status: unhealthy (possible issue, not confirmed). Assessment: Possible early blight.\nIssue categories: fungal infection, disease.\nVisual evidence: Brown lesions with c… [K2]"
+    },
+    {
+      "question": "What environmental conditions were recorded when this issue was detected?",
+      "planner": "heuristic",
+      "planner_ok": true,
+      "numbers_expected": [],
+      "numbers_found": [],
+      "cited_types": [
+        "agent_finding",
+        "diagnosis",
+        "sensor_linked"
+      ],
+      "citations_ok": true,
+      "keywords_ok": true,
+      "grounding": {
+        "farm_data": true,
+        "knowledge_store": true,
+        "general_knowledge": false,
+        "web": false,
+        "insufficient_data": false
+      },
+      "llm_used": false,
+      "latency_ms": 12,
+      "timings_ms": {
+        "ingest": 0,
+        "plan": 0,
+        "retrieve": 10,
+        "generate": 0
+      },
+      "answer": "**AI model not configured — showing the retrieved farm data directly.**\n\n- Sensor conditions within ±1 hour of the Tomato diagnosis (Possible early blight) (Sun 15 Jun 2025 07:30): air temperature averaged 24.7°C (22.4°C–26.6°C); relative humidity averaged 73% (67%–79%); soil moisture averaged 27.8% (26.6%–29.6%); mq2 gas index (smoke / combustible gases) averaged 170 ADC (138 ADC–209 ADC); mq5 gas index (lpg / natural gas / methane) averaged 205 ADC (168 ADC–238 ADC); mq6 gas index (lpg / butane / propane) averaged 191 ADC (166 ADC–217 ADC). [F1]\n- Crop diagnosis · Tomato · unhealthy · Sun 15 Jun 2025 07:30: On Sun 15 Jun 2025 07:30 (farm time) GAIA's visual AI assessed a photo of a Tomato leaf (rover capture).\nHealth status: unhealthy (possible issue, not confirmed). Assessment: Possible early blight.\nIssue categories: fungal infection, disease.\nVisual evidence: Brown lesions with c… [K1]\n- Agricultural information · Tomato · Possible early blight: Agricultural information found by GAIA's search agent on Sun 15 Jun 2025 07:30 for Tomato (Possible early blight; status unhealthy).\nSummary: Likely early blight; remove infected leaves and improve airflow (extension.umn.edu).\nAbout the suspected condition: Early blight is a fung… [K2]"
+    },
+    {
+      "question": "Where is the biogas unit?",
+      "planner": "heuristic",
+      "planner_ok": true,
+      "numbers_expected": [],
+      "numbers_found": [],
+      "cited_types": [
+        "farm_note",
+        "sensor_window"
+      ],
+      "citations_ok": true,
+      "keywords_ok": true,
+      "grounding": {
+        "farm_data": false,
+        "knowledge_store": true,
+        "general_knowledge": false,
+        "web": false,
+        "insufficient_data": false
+      },
+      "llm_used": false,
+      "latency_ms": 87,
+      "timings_ms": {
+        "ingest": 0,
+        "plan": 0,
+        "retrieve": 86,
+        "generate": 0
+      },
+      "answer": "**AI model not configured — showing the retrieved farm data directly.**\n\n- Biogas unit: The biogas digester is next to the cattle shed in the east corner of the farm.… [K1]\n- Sensor window · Sat 14 Jun 2025 16:30–16:45 · rover-01: Field sensor readings from rover-01 on Saturday 14 June 2025, 16:30–16:45 (afternoon, farm time).\n- Air temperature: average 32.7°C (min 32.2°C, max 33.2°C, 15 readings) — hot: heat stress possible, especially with low soil moisture.\n- Relative humidity: average 50% (min 47%, max… [K2]\n- Sensor window · Sat 14 Jun 2025 16:00–16:15 · rover-01: Field sensor readings from rover-01 on Saturday 14 June 2025, 16:00–16:15 (afternoon, farm time).\n- Air temperature: average 32.8°C (min 32.1°C, max 33.7°C, 15 readings) — hot: heat stress possible, especially with low soil moisture.\n- Relative humidity: average 48% (min 46%, max… [K3]"
+    },
+    {
+      "question": "How did the temperature change through the day today?",
+      "planner": "heuristic",
+      "planner_ok": true,
+      "numbers_expected": [],
+      "numbers_found": [],
+      "cited_types": [
+        "farm_note",
+        "sensor_daily",
+        "sensor_profile",
+        "sensor_stats"
+      ],
+      "citations_ok": true,
+      "keywords_ok": true,
+      "grounding": {
+        "farm_data": true,
+        "knowledge_store": true,
+        "general_knowledge": false,
+        "web": false,
+        "insufficient_data": false
+      },
+      "llm_used": false,
+      "latency_ms": 11,
+      "timings_ms": {
+        "ingest": 0,
+        "plan": 0,
+        "retrieve": 9,
+        "generate": 0
+      },
+      "answer": "**AI model not configured — showing the retrieved farm data directly.**\n\n- Air temperature today (Sun 15 Jun 2025, 00:00–15:00): average 24.7°C, minimum 22.3°C at 06:00, maximum 27.2°C at 08:41; 180 readings in 12 × 15-min windows between 06:00 and 08:59. Most recent value in this period: 26.3°C at 08:59. The average falls in the 'comfortable' band (within the comfortable range for most crops). [F1]\n- Air temperature today, average by time of day: early morning 24.0°C, morning 26.1°C. Overall it went from 24.0°C to 26.1°C (up 2.2 °C). [F2]\n- Daily sensor summary · Sun 15 Jun 2025 · rover-01: Daily field summary for Sunday 15 June 2025 from rover-01. Data covers 06:00–09:00 farm time (12 windows, 1020 readings).\nAir temperature: daily average 24.7°C (comfortable); lowest 22.3°C at 06:00; highest 27.2°C at 08:41.\n  By time of day: early morning 24.0°C, morning 26.1°C.\n… [K1]\n- Biogas unit: The biogas digester is next to the cattle shed in the east corner of the farm.… [K2]\n- Planting log: Tomato variety Arka Rakshak was planted in the north plot on 2 June.… [K3]"
+    }
+  ]
+}

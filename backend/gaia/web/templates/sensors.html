@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Sensors{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="eyebrow">Data acquisition layer</p>
+    <h1>Your field, measured.</h1>
+    <p class="subtitle">Readings are timestamped, aggregated into windows (min / max / average) and indexed for “Query my farm”.</p>
+  </div>
+  <div class="row wrap">
+    <div class="segmented" id="range">
+      <button data-h="6">6 h</button><button data-h="24" class="on">24 h</button><button data-h="168">7 days</button>
+    </div>
+    <button class="btn soft sm" id="sync"><svg class="icon sm"><use href="#i-refresh"/></svg>Sync now</button>
+  </div>
+</div>
+
+<div id="latest" class="grid auto"></div>
+<div class="section-head"><h2>History</h2><span class="caption">Line = window average · band = min–max within each window</span></div>
+<div id="charts" class="grid cols-2"></div>
+
+<div class="card tint" style="margin-top:22px">
+  <h3>How sensor data becomes knowledge</h3>
+  <p class="small" style="margin:8px 0 0">Every closed window is aggregated deterministically (count, min, max, mean, std) and written as a text chunk; each day also gets a rollup with time-of-day profiles and threshold events. Chat questions about numbers are answered from exact SQL statistics, never from the language model’s memory. Soil moisture is only logged while the rover is parked with the probe arm lowered. MQ gas values are uncalibrated relative indices.</p>
+  <p class="small muted" id="ingest-status" style="margin:8px 0 0"></p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(() => {
+  const { api, esc, chart, metricCard, toast } = GAIA;
+  const el = (id) => document.getElementById(id);
+  let hours = Number(GAIA.store.get("gaia.sensors.hours", "24"));
+  let registry = [];
+
+  async function loadLatest() {
+    const latest = await api("/telemetry/latest");
+    el("latest").innerHTML = latest.readings.length ? latest.readings.map(metricCard).join("")
+      : '<div class="card empty" style="grid-column:1/-1">No readings yet.</div>';
+    const st = await api("/ingest/status");
+    el("ingest-status").textContent = `Pending windows: ${st.pending_windows} · indexed: ` +
+      Object.entries(st.knowledge_by_type).map(([k, v]) => `${v} ${k.replace(/_/g, " ")}`).join(", ");
+  }
+
+  async function loadCharts() {
+    const keys = registry.filter((s) => s.rag).map((s) => s);
+    el("charts").innerHTML = keys.map((s) => `<div class="card"><div class="row between"><h3>${esc(s.label)}</h3><span class="caption">${esc(s.unit)}</span></div>
+      <div id="c-${s.key}" style="margin-top:8px"><div class="spinner"></div></div><div class="chart-tip" id="t-${s.key}"></div></div>`).join("");
+    await Promise.all(keys.map(async (s) => {
+      try {
+        const h = await api(`/telemetry/history?sensor=${encodeURIComponent(s.key)}&hours=${hours}`);
+        chart(el(`c-${s.key}`), h.points, { unit: s.unit === "ADC" ? "" : s.unit, decimals: s.decimals, tipEl: el(`t-${s.key}`) });
+      } catch (e) { el(`c-${s.key}`).innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+    }));
+  }
+
+  document.querySelectorAll("#range button").forEach((b) => {
+    b.classList.toggle("on", Number(b.dataset.h) === hours);
+    b.onclick = () => {
+      hours = Number(b.dataset.h); GAIA.store.set("gaia.sensors.hours", String(hours));
+      document.querySelectorAll("#range button").forEach((x) => x.classList.toggle("on", x === b));
+      loadCharts();
+    };
+  });
+  el("sync").onclick = async () => {
+    try {
+      const r = await api("/ingest/sync", { method: "POST", json: { include_open: true } });
+      toast(`Aggregated ${r.windows_aggregated} window(s), indexed ${r.windows_indexed}`);
+      loadLatest(); loadCharts();
+    } catch (e) { toast(e.message, "error"); }
+  };
+
+  (async () => {
+    try {
+      registry = await api("/sensors");
+      await Promise.all([loadLatest(), loadCharts()]);
+    } catch (e) { el("latest").innerHTML = `<div class="notice error">${esc(e.message)}</div>`; }
+    setInterval(() => loadLatest().catch(() => {}), 15000);
+  })();
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,16 @@
+\scaledtikz{\begin{tikzpicture}
+\node[gbox,text width=24mm] (rover) at (0,0) {\textbf{Rover}\\sensors and\\camera};
+\node[box,text width=24mm] (ing) at (3.9,0) {\textbf{Ingestion}\\validate, window,\\text chunks};
+\node[db,text width=18mm] (kb) at (7.8,0) {\textbf{Knowledge}\\\textbf{store}};
+\node[gbox,text width=24mm] (pa) at (11.7,0) {\textbf{Pipeline A}\\sensor-grounded\\RAG chat};
+\node[dbox,text width=24mm] (app) at (15.6,0) {\textbf{Flutter app}\\chat, diagnose,\\rover, live view};
+\node[box,text width=24mm] (cam) at (0,-3.6) {\textbf{Crop photo}\\rover or phone\\camera};
+\node[gbox,text width=36mm] (pb) at (7.8,-3.6) {\textbf{Pipeline B}\\VLM diagnosis +\\one web research agent};
+\draw[arr] (rover) -- node[lbl,above]{Wi-Fi} (ing);
+\draw[arr] (ing) -- (kb);
+\draw[arr] (kb) -- node[lbl,above]{read} (pa);
+\draw[arr] (pa) -- node[lbl,above]{SSE} (app);
+\draw[arr] (cam) -- (pb);
+\draw[arr] (pb) -- node[lbl,right]{one-way write} (kb);
+\draw[arr] (pb.east) -| node[lbl,pos=0.2,above]{result and sources} (app.south);
+\end{tikzpicture}}

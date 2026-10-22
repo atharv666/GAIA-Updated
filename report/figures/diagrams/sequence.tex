@@ -1,0 +1,22 @@
+\scaledtikz{\begin{tikzpicture}[x=2.5cm,y=-0.74cm]
+\foreach \i/\n in {0/Farmer app,1/Backend API,2/Query planner,3/SQL facts,4/Knowledge store,5/Gemini} {
+  \node[box,minimum width=21mm] at (\i,0) {\n};
+  \draw[dashed] (\i,0.55) -- (\i,15.9);
+}
+\draw[arr] (0,1.3) -- node[lbl,above]{POST /chat/stream} (1,1.3);
+\draw[arr] (1,2.3) -- node[lbl,above]{ingestion sync} (4,2.3);
+\draw[arr] (1,3.3) -- node[lbl,above]{plan(question, history)} (2,3.3);
+\draw[arr] (2,4.3) -- node[lbl,above]{structured request} (5,4.3);
+\draw[darr] (5,5.3) -- node[lbl,above]{intent, sensors, time tokens} (2,5.3);
+\draw[darr] (2,6.3) -- node[lbl,above]{plan} (1,6.3);
+\draw[arr] (1,7.3) -- node[lbl,above]{exact statistics, coverage} (3,7.3);
+\draw[arr] (1,8.3) -- node[lbl,above]{hybrid search (vector + full-text, RRF)} (4,8.3);
+\draw[darr] (4,9.3) -- node[lbl,above]{[K] chunks} (1,9.3);
+\draw[arr] (1,10.3) -- node[lbl,above]{context + question (stream)} (5,10.3);
+\draw[darr] (5,11.3) -- node[lbl,above]{JSON text chunks} (1,11.3);
+\draw[darr] (1,12.3) -- node[lbl,above]{event: stage, delta} (0,12.3);
+\draw[arr] (1,13.1) -- (1.35,13.1) -- (1.35,13.8) -- (1,13.8);
+\node[lbl,anchor=west] at (1.4,13.45) {validate citations};
+\draw[darr] (1,14.6) -- node[lbl,above]{event: final (answer, sources)} (0,14.6);
+\draw[arr] (1,15.5) -- node[lbl,above]{save message} (4,15.5);
+\end{tikzpicture}}

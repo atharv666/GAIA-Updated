@@ -1,0 +1,14 @@
+\scaledtikz{\begin{tikzpicture}
+\node[gbox,text width=62mm] (s1) at (0,0) {1. Question and conversation history};
+\node[box,text width=62mm] (s2) at (0,-2.0) {2. Ingestion sync, including the\\still-filling 15-minute window};
+\node[box,text width=62mm] (s3) at (0,-4.1) {3. Query plan: intent, sensors, time tokens,\\standalone rewrite (LLM, rule-based fallback)};
+\node[box,text width=62mm] (s4) at (0,-6.2) {4. Resolve time tokens to farm-time ranges\\(deterministic code)};
+\node[box,text width=62mm] (s5) at (0,-8.3) {5. Exact SQL facts [F1], [F2], ... and\\sensor on/off coverage facts};
+\node[box,text width=62mm] (s6) at (8.4,-8.3) {6. Hybrid retrieval [K1], [K2], ...\\pgvector + full-text, fused by RRF};
+\node[box,text width=62mm] (s7) at (8.4,-6.2) {7. Optional multi-hop: sensor conditions\\around a retrieved diagnosis};
+\node[box,text width=62mm] (s8) at (8.4,-4.1) {8. Grounded generation: structured JSON,\\answer text streamed token by token};
+\node[box,text width=62mm] (s9) at (8.4,-2.0) {9. Citation validation: remove IDs that\\are not in the context};
+\node[gbox,text width=62mm] (s10) at (8.4,0) {10. Answer, sources, grounding flags;\\message saved to chat memory};
+\draw[arr] (s1) -- (s2); \draw[arr] (s2) -- (s3); \draw[arr] (s3) -- (s4); \draw[arr] (s4) -- (s5);
+\draw[arr] (s5) -- (s6); \draw[arr] (s6) -- (s7); \draw[arr] (s7) -- (s8); \draw[arr] (s8) -- (s9); \draw[arr] (s9) -- (s10);
+\end{tikzpicture}}

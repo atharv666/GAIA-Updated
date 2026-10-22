@@ -1,0 +1,14 @@
+{
+  "source_type": "farm_note",
+  "source_id": "57f8df1b4bcf43518dbc023be77cc201",
+  "title": "Biogas unit",
+  "content": "The biogas digester is next to the cattle shed in the east corner. The rover passes it at the end of the\nevening route, so MQ5 (methane) readings there can be higher than in the rest of the field. A short methane\nspike near the shed in the evening is normal and not a leak in the field itself.",
+  "time_start": null,
+  "time_end": null,
+  "meta": {
+    "kind": "note",
+    "filename": null,
+    "created_at": "2026-10-17T10:56:07.817613+00:00",
+    "document_id": "57f8df1b4bcf43518dbc023be77cc201"
+  }
+}

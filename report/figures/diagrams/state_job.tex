@@ -1,0 +1,21 @@
+\scaledtikz{\begin{tikzpicture}
+\tikzset{st/.style={nohyph,draw,rounded corners=6pt,minimum height=8mm,minimum width=22mm,align=center,font=\dgfont,fill=white}}
+\node[circle,fill=black,minimum size=3mm,inner sep=0] (init) at (0,0) {};
+\node[st] (q) at (2.2,0) {queued};
+\node[st] (v) at (6.4,0) {vlm};
+\node[st] (s) at (10.6,0) {searching};
+\node[st] (w) at (14.8,0) {writing};
+\node[st,fill=black!10] (np) at (6.4,-3.3) {not\_plant};
+\node[st,fill=black!10] (fail) at (10.6,-3.3) {failed};
+\node[st,fill=black!10] (done) at (14.8,-3.3) {completed};
+\draw[arr] (init) -- (q);
+\draw[arr] (q) -- node[lbl,above]{worker starts} (v);
+\draw[arr] (v) -- node[lbl,above]{plant image} (s);
+\draw[arr] (s) -- node[lbl,above]{findings ready} (w);
+\draw[arr] (w) -- node[lbl,right]{chunks written} (done);
+\draw[arr] (v) -- node[lbl,right]{not a plant} (np);
+\draw[darr] (v.south east) -- (fail.north west);
+\draw[darr] (s.south) -- (fail.north);
+\draw[darr] (w.south west) -- (fail.north east);
+\node[font=\fontsize{8}{9.5}\selectfont,anchor=west,text width=70mm] at (0,-4.6) {Dashed arrows: any step can fail. A server restart marks every job still processing as failed, so no job stays unfinished.};
+\end{tikzpicture}}

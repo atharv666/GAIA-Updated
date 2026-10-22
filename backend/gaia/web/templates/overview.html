@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Overview{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="eyebrow" id="today"></p>
+    <h1 id="greeting">Hello, {{ farmer_name }}.</h1>
+    <p class="subtitle" id="headline">Loading your field…</p>
+  </div>
+  <a class="btn" href="/chat"><svg class="icon sm"><use href="#i-spark"/></svg>Ask Gaia</a>
+</div>
+
+<div class="hero fade-in">
+  <svg class="leaf-bg icon"><use href="#i-leaf"/></svg>
+  <p class="eyebrow">Field status</p>
+  <h2 id="hero-title">Checking the sensor log…</h2>
+  <p id="hero-sub"></p>
+</div>
+
+<div class="section-head"><h2>Latest readings</h2><a class="caption" href="/sensors">All sensors →</a></div>
+<div id="metrics" class="grid cols-4"></div>
+
+<div class="split" style="margin-top:22px">
+  <div class="card">
+    <div class="row between"><h2>Today so far</h2><span class="caption" id="today-range"></span></div>
+    <div class="table-wrap" style="margin-top:8px"><table class="data"><thead><tr><th>Sensor</th><th>Average</th><th>Min</th><th>Max</th><th>Readings</th></tr></thead>
+      <tbody id="today-table"><tr><td colspan="5" class="muted">Loading…</td></tr></tbody></table></div>
+  </div>
+  <div class="card">
+    <div class="row between"><h2>Recent diagnoses</h2><a class="caption" href="/diagnose">Diagnose →</a></div>
+    <div id="diagnoses" class="list"></div>
+  </div>
+</div>
+
+<div class="section-head"><h2>Your AI pipelines</h2><span class="caption">Two independent generative flows, one shared knowledge store</span></div>
+<div class="grid cols-3">
+  <a class="card" href="/chat" style="text-decoration:none;color:inherit">
+    <div class="row between"><strong style="color:var(--leaf)">01</strong><svg class="icon" style="color:var(--leaf)"><use href="#i-spark"/></svg></div>
+    <h3 style="margin-top:18px">Query my farm</h3><div class="small muted">RAG over sensor windows, daily summaries, diagnoses and notes — plus web-grounded open questions.</div></a>
+  <a class="card" href="/diagnose" style="text-decoration:none;color:inherit">
+    <div class="row between"><strong style="color:var(--terracotta)">02</strong><svg class="icon" style="color:var(--terracotta)"><use href="#i-scan"/></svg></div>
+    <h3 style="margin-top:18px">Crop diagnosis</h3><div class="small muted">Vision-language model → single research agent → findings written to the knowledge store.</div></a>
+  <a class="card" href="/knowledge" style="text-decoration:none;color:inherit">
+    <div class="row between"><strong style="color:var(--forest)">KB</strong><svg class="icon"><use href="#i-book"/></svg></div>
+    <h3 style="margin-top:18px">Knowledge store</h3><div class="small muted" id="kb-summary">Loading…</div></a>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(async () => {
+  const { api, esc, fmt, metricCard } = GAIA;
+  const el = (id) => document.getElementById(id);
+  const now = new Date();
+  el("today").textContent = now.toLocaleDateString([], { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  const h = now.getHours();
+  el("greeting").textContent = `Good ${h < 12 ? "morning" : h < 17 ? "afternoon" : "evening"}, ${ {{ farmer_name|tojson }} }.`;
+
+  try {
+    const [latest, ov, today] = await Promise.all([api("/telemetry/latest"), api("/overview"), api("/telemetry/summary?range=day:0")]);
+    const readings = latest.readings.filter((r) => r.rag);
+    el("metrics").innerHTML = readings.length ? readings.slice(0, 8).map(metricCard).join("")
+      : '<div class="card empty" style="grid-column:1/-1">No sensor data yet. Start the rover (or scripts/rover_simulator.py) to begin logging.</div>';
+
+    const last = ov.last_reading_at;
+    const alerts = readings.filter((r) => ["dry", "saturated", "very humid", "very hot", "cold", "high", "elevated"].includes(r.band));
+    el("hero-title").innerHTML = !last ? "Waiting for the first<br>rover readings." : alerts.length ? `${alerts.length} reading${alerts.length > 1 ? "s" : ""} need<br>your attention.` : "All readings within<br>expected ranges.";
+    el("hero-sub").textContent = last ? `Last reading ${fmt.ago(last)} · ${ov.readings.toLocaleString()} readings logged · ${ov.windows.toLocaleString()} aggregated windows` : "Sensor log is empty.";
+    el("headline").textContent = alerts.length ? alerts.map((a) => `${a.label}: ${a.band}`).join(" · ") : "Your farm is looking steady.";
+
+    el("today-range").textContent = today.range.description;
+    el("today-table").innerHTML = today.stats.filter((s) => !["distance_cm", "battery_v"].includes(s.sensor)).map((s) => {
+      const d = (v) => `${fmt.num(v, s.unit === "ADC" || s.unit === "%" && s.sensor === "humidity" ? 0 : 1)}${s.unit === "ADC" ? "" : s.unit}`;
+      return `<tr><td><strong>${esc(s.label)}</strong>${s.band ? ` <span class="badge">${esc(s.band)}</span>` : ""}</td><td>${d(s.avg)}</td><td>${d(s.min)} <span class="tiny muted">${fmt.time(s.min_ts)}</span></td><td>${d(s.max)} <span class="tiny muted">${fmt.time(s.max_ts)}</span></td><td>${s.count}</td></tr>`;
+    }).join("") || '<tr><td colspan="5" class="muted">No readings today yet.</td></tr>';
+
+    el("diagnoses").innerHTML = ov.latest_diagnoses.length ? ov.latest_diagnoses.map((d) => `
+      <a class="list-item" href="/diagnose?id=${esc(d.id)}" style="text-decoration:none;color:inherit">
+        <img class="thumb" src="${esc(d.image_url)}" alt="" loading="lazy">
+        <div class="grow"><div class="truncate"><strong>${esc(d.plant || "—")}</strong></div><div class="tiny muted truncate">${esc(d.diagnosis || d.status)} · ${esc(fmt.ago(d.created_at))}</div></div>
+        <span class="pill ${esc(d.health_status || "neutral")}">${esc(d.health_status || d.status)}</span></a>`).join("")
+      : '<div class="empty">No diagnoses yet — try the Diagnose tab.</div>';
+
+    const kb = ov.knowledge;
+    el("kb-summary").textContent = kb.total ? `${kb.total} entries · ` + Object.entries(kb.by_type).map(([t, n]) => `${n} ${t.replace(/_/g, " ")}`).join(", ") : "Empty — it fills as sensor windows close and diagnoses complete.";
+  } catch (e) {
+    el("hero-title").textContent = "Couldn't load the dashboard.";
+    el("hero-sub").textContent = e.message;
+  }
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,325 @@
+{
+  "summary": {
+    "cases": 10,
+    "planner_accuracy": 1.0,
+    "numeric_recall": 1.0,
+    "citation_accuracy": 1.0,
+    "keyword_accuracy": 1.0,
+    "answers_with_citations": 1.0,
+    "median_latency_ms": 18864.0,
+    "llm": "openai_compat(127.0.0.1):gemma4:e4b",
+    "embedder": "hashing:hashing-v1:768"
+  },
+  "cases": [
+    {
+      "question": "What was the average soil moisture today?",
+      "planner": "llm",
+      "planner_ok": true,
+      "numbers_expected": [
+        "27.8"
+      ],
+      "numbers_found": [
+        "27.8"
+      ],
+      "cited_types": [
+        "sensor_stats"
+      ],
+      "citations_ok": true,
+      "keywords_ok": true,
+      "grounding": {
+        "farm_data": true,
+        "knowledge_store": false,
+        "general_knowledge": false,
+        "web": false,
+        "insufficient_data": false
+      },
+      "llm_used": true,
+      "latency_ms": 34032,
+      "timings_ms": {
+        "ingest": 0,
+        "plan": 25818,
+        "retrieve": 11,
+        "generate": 8201
+      },
+      "answer": "The average soil moisture recorded today (Sunday 15 June 2025, 00:00–15:00) was 27.8% [F1]."
+    },
+    {
+      "question": "How humid was my field this morning?",
+      "planner": "llm",
+      "planner_ok": true,
+      "numbers_expected": [
+        "73"
+      ],
+      "numbers_found": [
+        "73"
+      ],
+      "cited_types": [
+        "sensor_daily",
+        "sensor_stats"
+      ],
+      "citations_ok": true,
+      "keywords_ok": true,
+      "grounding": {
+        "farm_data": true,
+        "knowledge_store": true,
+        "general_knowledge": false,
+        "web": false,
+        "insufficient_data": false
+      },
+      "llm_used": true,
+      "latency_ms": 16518,
+      "timings_ms": {
+        "ingest": 1,
+        "plan": 4257,
+        "retrieve": 31,
+        "generate": 12227
+      },
+      "answer": "This morning, the relative humidity was generally in the 'humid' band [F1]. Specifically, the average relative humidity recorded between 06:00 and 08:59 was 73% [F1]. The humidity ranged from a low of 64% at 08:57 to a high of 82% at 06:13 [F1].\n\nLooking at the daily summary for Sunday, the early morning average was 75% and the morning average was 68% [K1]."
+    },
+    {
+      "question": "Was the soil moisture lower than yesterday?",
+      "planner": "llm",
+      "planner_ok": true,
+      "numbers_expected": [
+        "27.8",
+        "37.6"
+      ],
+      "numbers_found": [
+        "27.8",
+        "37.6"
+      ],
+      "cited_types": [
+        "sensor_comparison",
+        "sensor_stats"
+      ],
+      "citations_ok": true,
+      "keywords_ok": true,
+      "grounding": {
+        "farm_data": true,
+        "knowledge_store": false,
+        "general_knowledge": false,
+        "web": false,
+        "insufficient_data": false
+      },
+      "llm_used": true,
+      "latency_ms": 15741,
+      "timings_ms": {
+        "ingest": 1,
+        "plan": 4404,
+        "retrieve": 4,
+        "generate": 11330
+      },
+      "answer": "Yes, the average soil moisture today (Sunday 15 June 2025) was lower than yesterday's average soil moisture [F3].\n\n*   **Today's Average:** 27.8% [F1].\n*   **Yesterday's Average:** 37.6% [F2].\n*   **Comparison:** The average today is 9.8 percentage points lower than yesterday, which is a relative decrease of 26% [F3]."
+    },
+    {
+      "question": "What was the highest temperature yesterday?",
+      "planner": "llm",
+      "planner_ok": true,
+      "numbers_expected": [
+        "33.7"
+      ],
+      "numbers_found": [
+        "33.7"
+      ],
+      "cited_types": [
+        "sensor_stats"
+      ],
+      "citations_ok": true,
+      "keywords_ok": true,
+      "grounding": {
+        "farm_data": true,
+        "knowledge_store": false,
+        "general_knowledge": false,
+        "web": false,
+        "insufficient_data": false
+      },
+      "llm_used": true,
+      "latency_ms": 12409,
+      "timings_ms": {
+        "ingest": 1,
+        "plan": 3753,
+        "retrieve": 4,
+        "generate": 8649
+      },
+      "answer": "The highest air temperature recorded yesterday (Saturday, 14 June 2025) was 33.7°C, which occurred at 16:11 [F1]."
+    },
+    {
+      "question": "Any unusual gas readings in the last 3 days?",
+      "planner": "llm",
+      "planner_ok": true,
+      "numbers_expected": [
+        "495"
+      ],
+      "numbers_found": [
+        "495"
+      ],
+      "cited_types": [
+        "sensor_profile",
+        "sensor_stats"
+      ],
+      "citations_ok": true,
+      "keywords_ok": true,
+      "grounding": {
+        "farm_data": true,
+        "knowledge_store": false,
+        "general_knowledge": false,
+        "web": false,
+        "insufficient_data": false
+      },
+      "llm_used": true,
+      "latency_ms": 29167,
+      "timings_ms": {
+        "ingest": 0,
+        "plan": 4675,
+        "retrieve": 24,
+        "generate": 24466
+      },
+      "answer": "Overall, the gas readings for the last three days (Friday 13 June to Sunday 15 June) appear to be within the baseline range for all monitored gases, though there were notable peaks on Saturday, June 14th.\n\n*   **MQ2 (Smoke/Combustible Gases):** The average was 178 ADC [F1], with a maximum reading of 304 ADC recorded at Saturday, June 14th, 16:01 [F1]. The daily average on Saturday was 189 ADC [F4].\n*   **MQ5 (LPG/Natural Gas/Methane):** The average was 223 ADC [F2], and the maximum reading was 495 ADC recorded at Saturday, June 14th, 16:35 [F2]. The daily average on Saturday was 252 ADC [F5].\n*   **MQ6 (LPG/Butane/Propane):** The average was 202 ADC [F3], with a maximum reading of 372 ADC recorded at Saturday, June 14th, 16:23 [F3]. The daily average on Saturday was 219 ADC [F6].\n\nWhile the averages for all gases fall in the 'baseline' band [F1][F2][F3], the high maximum readings on Saturday suggest periods of elevated gas presence that are worth noting."
+    },
+    {
+      "question": "What crop problems have been identified in my field?",
+      "planner": "llm",
+      "planner_ok": true,
+      "numbers_expected": [],
+      "numbers_found": [],
+      "cited_types": [
+        "agent_finding",
+        "diagnosis"
+      ],
+      "citations_ok": true,
+      "keywords_ok": true,
+      "grounding": {
+        "farm_data": false,
+        "knowledge_store": true,
+        "general_knowledge": false,
+        "web": false,
+        "insufficient_data": false
+      },
+      "llm_used": true,
+      "latency_ms": 19985,
+      "timings_ms": {
+        "ingest": 0,
+        "plan": 3920,
+        "retrieve": 7,
+        "generate": 16056
+      },
+      "answer": "Based on the most recent assessment, a possible issue has been identified with your Tomato crop [K1].\n\n*   **Diagnosis:** The AI visual assessment on Sunday, June 15, 2025, suggested **possible early blight** on the Tomato [K1].\n*   **Visual Evidence:** The signs noted were brown lesions with concentric rings on the lower leaves [K1].\n*   **Severity:** The visible severity of the issue is currently unknown [K1].\n\nFor early blight, the recommended actions include removing and destroying infected lower leaves, applying a labeled copper fungicide if the disease spreads, and preventing further spread by mulching the soil and avoiding overhead irrigation [K2]."
+    },
+    {
+      "question": "What treatment did the system find for the tomato problem?",
+      "planner": "llm",
+      "planner_ok": true,
+      "numbers_expected": [],
+      "numbers_found": [],
+      "cited_types": [
+        "agent_finding",
+        "diagnosis"
+      ],
+      "citations_ok": true,
+      "keywords_ok": true,
+      "grounding": {
+        "farm_data": false,
+        "knowledge_store": true,
+        "general_knowledge": false,
+        "web": false,
+        "insufficient_data": false
+      },
+      "llm_used": true,
+      "latency_ms": 16102,
+      "timings_ms": {
+        "ingest": 0,
+        "plan": 4598,
+        "retrieve": 4,
+        "generate": 11497
+      },
+      "answer": "The system found possible early blight on your tomatoes [K2]. The recommended treatments include:\n\n*   **Remove and destroy infected lower leaves** [K1].\n*   **Apply a labelled copper fungicide** if the blight spreads [K1].\n\nFor prevention, it is advised to mulch the soil and avoid overhead irrigation [K1]."
+    },
+    {
+      "question": "What environmental conditions were recorded when this issue was detected?",
+      "planner": "llm",
+      "planner_ok": true,
+      "numbers_expected": [],
+      "numbers_found": [],
+      "cited_types": [
+        "agent_finding",
+        "diagnosis",
+        "sensor_linked"
+      ],
+      "citations_ok": true,
+      "keywords_ok": true,
+      "grounding": {
+        "farm_data": true,
+        "knowledge_store": true,
+        "general_knowledge": true,
+        "web": false,
+        "insufficient_data": false
+      },
+      "llm_used": true,
+      "latency_ms": 30210,
+      "timings_ms": {
+        "ingest": 1,
+        "plan": 5122,
+        "retrieve": 13,
+        "generate": 25072
+      },
+      "answer": "The environmental conditions recorded when the possible early blight on your Tomato was detected on Sunday, 15 June 2025, at 07:30 were as follows:\n\n*   **Air Temperature:** Averaged 24.7°C, with a range of 22.4°C to 26.6°C [F1].\n*   **Relative Humidity:** Averaged 73%, with a range of 67% to 79% [F1].\n*   **Soil Moisture:** Averaged 27.8%, with a range of 26.6% to 29.6% [F1].\n*   **Gas Readings:**\n    *   $\text{mq2}$ (smoke / combustible gases): Averaged 170 ADC, with a range of 138 ADC to 209 ADC [F1].\n    *   $\text{mq5}$ (lpg / natural gas / methane): Averaged 205 ADC, with a range of 168 ADC to 238 ADC [F1].\n    *   $\text{mq6}$ (lpg / butane / propane): Averaged 191 ADC, with a range of 166 ADC to 217 ADC [F1].\n\nGeneral guidance: Since the diagnosis suggests possible early blight [K1], remember the recommended actions are to remove and destroy infected lower leaves and improve airflow [K2]. Monitoring humidity and soil moisture levels relative to the disease progression is also important."
+    },
+    {
+      "question": "Where is the biogas unit?",
+      "planner": "llm",
+      "planner_ok": true,
+      "numbers_expected": [],
+      "numbers_found": [],
+      "cited_types": [
+        "farm_note"
+      ],
+      "citations_ok": true,
+      "keywords_ok": true,
+      "grounding": {
+        "farm_data": false,
+        "knowledge_store": true,
+        "general_knowledge": false,
+        "web": false,
+        "insufficient_data": false
+      },
+      "llm_used": true,
+      "latency_ms": 39154,
+      "timings_ms": {
+        "ingest": 0,
+        "plan": 3768,
+        "retrieve": 98,
+        "generate": 35286
+      },
+      "answer": "The biogas digester is located next to the cattle shed in the east corner of the farm [K1]."
+    },
+    {
+      "question": "How did the temperature change through the day today?",
+      "planner": "llm",
+      "planner_ok": true,
+      "numbers_expected": [],
+      "numbers_found": [],
+      "cited_types": [
+        "sensor_daily",
+        "sensor_stats"
+      ],
+      "citations_ok": true,
+      "keywords_ok": true,
+      "grounding": {
+        "farm_data": true,
+        "knowledge_store": true,
+        "general_knowledge": false,
+        "web": false,
+        "insufficient_data": false
+      },
+      "llm_used": true,
+      "latency_ms": 17743,
+      "timings_ms": {
+        "ingest": 1,
+        "plan": 4024,
+        "retrieve": 10,
+        "generate": 13707
+      },
+      "answer": "The air temperature today showed a gradual increase through the morning hours. The average temperature for the period covered was 24.7°C [K1]. Specifically, the temperature started at an early morning average of 24.0°C [K1], rising to a morning average of 26.1°C [K1]. The temperature reached its lowest point of 22.3°C at 06:00 [K1], and the highest recorded temperature was 27.2°C at 08:41 [K1]. The most recent temperature reading provided was 26.3°C at 08:59 [F1]."
+    }
+  ]
+}

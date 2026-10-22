@@ -1,0 +1,7 @@
+{
+  "device_id": "rover-01",
+  "uptime_ms": 123456,
+  "values": {"temperature": 27.4, "humidity": 61.0, "soil_moisture": 43.5, "mq5": 208, "mq6": 191, "distance_cm": 84, "battery_v": 7.86},
+  "state": {"moving": false, "arm_deployed": true, "soil_valid": true, "obstacle": false, "failsafe": false,
+            "sensor_switches": {"dht11": true, "soil_moisture": true, "mq5": true, "mq6": true}, "warming": []}
+}

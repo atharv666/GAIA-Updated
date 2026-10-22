@@ -1,0 +1,20 @@
+\scaledtikz{\begin{tikzpicture}
+\tikzset{ent/.style={nohyph,draw,rectangle split,rectangle split parts=2,align=left,font=\fontsize{8}{9.5}\selectfont,fill=white,inner sep=3pt,text width=47mm,rectangle split part fill={black!15,white}}}
+\node[ent] (rd) at (0,0) {\textbf{sensor\_readings}\nodepart{second}id, device\_id, sensor, ts, value,\\received\_at (unique per\\device, sensor, ts)};
+\node[ent] (wi) at (0,-3.0) {\textbf{sensor\_windows}\nodepart{second}device\_id, sensor, window\_start,\\window\_end, count, min, max,\\avg, std, first and last value};
+\node[ent] (dw) at (0,-5.9) {\textbf{dirty\_windows}\nodepart{second}device\_id, window\_start,\\marked\_at};
+\node[ent] (se) at (0,-8.0) {\textbf{sensor\_state\_events}\nodepart{second}device\_id, toggle,\\state (on or off), ts};
+\node[ent] (hb) at (0,-10.1) {\textbf{rover\_heartbeats}\nodepart{second}device\_id, bucket\_start (5 min),\\last\_seen};
+\node[ent] (kc) at (8.2,-3.0) {\textbf{knowledge\_chunks}\nodepart{second}id, source\_type, source\_id,\\chunk\_index, title, content,\\embedding vector(768),\\embed\_model, time\_start,\\time\_end, meta (JSON),\\content\_hash};
+\node[ent] (fd) at (15.6,0) {\textbf{farm\_documents}\nodepart{second}id, kind (note or document),\\title, filename, content,\\chunk\_count};
+\node[ent] (dg) at (15.6,-3.2) {\textbf{diagnoses}\nodepart{second}id, source, image\_path,\\status, stage, analysis (JSON),\\findings (JSON), sources,\\agent\_trace, timings};
+\node[ent] (cs) at (15.6,-6.8) {\textbf{chat\_sessions}\nodepart{second}id, title, created and\\updated time};
+\node[ent] (cm) at (15.6,-9.0) {\textbf{chat\_messages}\nodepart{second}id, session\_id (FK), role,\\mode, content, meta (JSON)};
+\draw[arr] (rd) -- node[lbl,right]{aggregated into} (wi);
+\draw[arr] (wi.east) -- node[lbl,above]{text, embedding} (wi.east -| kc.west);
+\draw[arr] (fd.west) -- ++(-1.0,0) |- node[lbl,pos=0.25,left]{chunked} ([yshift=0.5cm]kc.east);
+\draw[arr] (dg.west) -- ++(-1.0,0) |- node[lbl,pos=0.25,left]{findings} ([yshift=-0.5cm]kc.east);
+\draw[arr] (cs) -- node[lbl,right]{1 to many} (cm);
+\node[zone,fit=(rd)(se)(hb),inner sep=10pt] (zs) {};
+\node[font=\fontsize{7.5}{9}\selectfont,anchor=west,text width=48mm,align=left] at (4.0,-8.4) {The readings, switch events and heartbeats together explain every gap in the data.};
+\end{tikzpicture}}

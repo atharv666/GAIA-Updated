@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+{% block title %}Diagnose{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="eyebrow">Pipeline B · VLM + agent</p>
+    <h1>Understand your crops visually.</h1>
+    <p class="subtitle">Upload a leaf photo or capture one from the rover. Gaia examines it, researches it, and remembers it.</p>
+  </div>
+</div>
+
+<div class="split">
+  <div class="stack">
+    <label id="dropzone" class="dropzone" for="file">
+      <img id="preview" class="preview hidden" alt="Selected crop photo">
+      <div class="dz-inner" id="dz-inner">
+        <span class="dz-icon"><svg class="icon lg"><use href="#i-camera"/></svg></span>
+        <strong>Drop a crop photo here, or click to choose</strong>
+        <span class="small muted">JPEG / PNG / WebP · on a phone this opens the camera</span>
+      </div>
+      <input id="file" type="file" accept="image/*" capture="environment" class="hidden">
+    </label>
+    <div class="card flat stack">
+      <label class="field">Location or note (optional, stored with the result — not shown to the AI)
+        <input id="note" type="text" maxlength="200" placeholder="e.g. North plot, row 3">
+      </label>
+      <div class="row wrap">
+        <button id="analyze" class="btn" disabled><svg class="icon sm"><use href="#i-scan"/></svg>Analyse photo</button>
+        <button id="rover-capture" class="btn ghost"><svg class="icon sm"><use href="#i-rover"/></svg>Capture from rover</button>
+      </div>
+    </div>
+    <div id="steps" class="steps">
+      <div class="step" data-stage="vlm"><span class="num">1</span><svg class="icon"><use href="#i-scan"/></svg>
+        <div><h3>VLM visual analysis</h3><div class="tiny muted">Plant · health · evidence · confidence (structured JSON)</div></div><span class="state"></span></div>
+      <div class="step" data-stage="searching"><span class="num">2</span><svg class="icon"><use href="#i-globe"/></svg>
+        <div><h3>Agent search</h3><div class="tiny muted">One agent decides what to look up and cites sources</div></div><span class="state"></span></div>
+      <div class="step" data-stage="writing"><span class="num">3</span><svg class="icon"><use href="#i-book"/></svg>
+        <div><h3>Present + augment</h3><div class="tiny muted">Findings written to the shared knowledge store</div></div><span class="state"></span></div>
+    </div>
+    <div class="card">
+      <div class="row between"><h2>Recent diagnoses</h2><button id="reload-history" class="btn soft sm icon-only" aria-label="Refresh"><svg class="icon sm"><use href="#i-refresh"/></svg></button></div>
+      <div id="history" class="list" style="margin-top:6px"></div>
+    </div>
+  </div>
+
+  <div class="stack">
+    <div id="result" class="stack"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(() => {
+  const { api, esc, fmt, toast } = GAIA;
+  const el = (id) => document.getElementById(id);
+  let file = null, polling = null;
+  const ORDER = ["vlm", "searching", "writing", "done"];
+
+  function choose(f) {
+    if (!f || !f.type.startsWith("image/")) return toast("Please choose an image file", "error");
+    file = f;
+    el("preview").src = URL.createObjectURL(f);
+    el("preview").classList.remove("hidden");
+    el("dz-inner").classList.add("hidden");
+    el("analyze").disabled = false;
+  }
+  el("file").addEventListener("change", (e) => choose(e.target.files[0]));
+  const dz = el("dropzone");
+  ["dragenter", "dragover"].forEach((t) => dz.addEventListener(t, (e) => { e.preventDefault(); dz.classList.add("drag"); }));
+  ["dragleave", "drop"].forEach((t) => dz.addEventListener(t, (e) => { e.preventDefault(); dz.classList.remove("drag"); }));
+  dz.addEventListener("drop", (e) => choose(e.dataTransfer.files[0]));
+
+  function setStage(stage, status) {
+    const idx = ORDER.indexOf(stage);
+    document.querySelectorAll(".step").forEach((s) => {
+      const i = ORDER.indexOf(s.dataset.stage);
+      const failed = status === "failed" && i === idx;
+      s.classList.toggle("active", i === idx && stage !== "done");
+      s.classList.toggle("done", i < idx || stage === "done" && status === "completed");
+      s.querySelector(".state").textContent = failed ? "FAILED" : i === idx && stage !== "done" ? "RUNNING" : (i < idx || (stage === "done" && status === "completed")) ? "DONE" : "";
+    });
+  }
+
+  async function start(promise) {
+    el("analyze").disabled = true; el("rover-capture").disabled = true;
+    el("result").innerHTML = `<div class="card row"><span class="spinner"></span><span>Uploading and queueing the analysis…</span></div>`;
+    setStage("vlm", "processing");
+    try {
+      const job = await promise;
+      poll(job.id);
+    } catch (e) {
+      el("result").innerHTML = `<div class="notice error">${esc(e.message)}</div>`;
+      setStage("queued");
+      el("analyze").disabled = !file; el("rover-capture").disabled = false;
+    }
+  }
+
+  el("analyze").onclick = () => {
+    const form = new FormData();
+    form.append("image", file);
+    form.append("source", "web");
+    if (el("note").value.trim()) form.append("note", el("note").value.trim());
+    start(api("/diagnoses", { method: "POST", form }));
+  };
+  el("rover-capture").onclick = () => start(api("/diagnoses/from-rover", { method: "POST", json: { note: el("note").value.trim() || null } }));
+
+  function poll(id) {
+    clearTimeout(polling);
+    const tick = async () => {
+      try {
+        const d = await api(`/diagnoses/${id}`);
+        setStage(d.stage, d.status);
+        if (d.status === "processing") {
+          const label = { queued: "Queued…", vlm: "The VLM is examining the photo…", searching: "The agent is researching agricultural sources…", writing: "Writing findings to the knowledge store…" }[d.stage] || "Working…";
+          el("result").innerHTML = `<div class="card row"><span class="spinner"></span><span>${label}</span></div>`;
+          polling = setTimeout(tick, 1200);
+        } else {
+          render(d); loadHistory();
+          el("analyze").disabled = !file; el("rover-capture").disabled = false;
+          history.replaceState(null, "", `?id=${d.id}`);
+        }
+      } catch (e) { el("result").innerHTML = `<div class="notice error">${esc(e.message)}</div>`; }
+    };
+    tick();
+  }
+
+  const list = (items) => items && items.length ? `<ul>${items.map((i) => `<li>${GAIA.md(i).replace(/^<p>|<\/p>$/g, "")}</li>`).join("")}</ul>` : "";
+
+  function render(d) {
+    const a = d.analysis || {};
+    if (d.status === "failed") {
+      el("result").innerHTML = `<div class="notice error"><div><strong>Diagnosis failed.</strong><br>${esc(d.error || "Unknown error")}</div></div>`;
+      return;
+    }
+    const f = d.findings || {};
+    const cited = (d.sources || []).filter((s) => s.cited);
+    const uncited = (d.sources || []).filter((s) => !s.cited);
+    const status = a.health_status || "uncertain";
+    const cats = (a.issue_categories || []).map((c) => `<span class="badge">${esc(c.replace(/_/g, " "))}</span>`).join("");
+    el("result").innerHTML = `
+      <div class="card stack fade-in">
+        <div class="row between wrap">
+          <div class="row"><img class="thumb" src="${esc(d.image_url)}" alt="">
+            <div><h2>${esc(a.plant || "Unknown")}</h2><div class="tiny muted">${esc(a.plant_scientific_name || "")}${a.plant_part ? " · " + esc(a.plant_part) : ""} · ${esc(fmt.dateTime(d.created_at))} · ${esc(d.source)} capture</div></div></div>
+          <span class="pill ${esc(status)}">${esc(status)}</span>
+        </div>
+        ${d.status === "not_plant" ? `<div class="notice warn">This photo does not appear to show a plant, so no research was done and nothing was stored.</div>` : ""}
+        <div><div class="eyebrow" style="margin:0">Possible issue</div><h3 style="font-size:17px">${esc(a.diagnosis || "—")}</h3>
+          ${cats ? `<div class="badges" style="margin-top:6px">${cats}</div>` : ""}</div>
+        <div><div class="eyebrow">Visual evidence</div>${list(a.evidence)}</div>
+        ${a.assumptions && a.assumptions.length ? `<div><div class="eyebrow">Assumptions (not directly visible)</div>${list(a.assumptions)}</div>` : ""}
+        ${a.differential && a.differential.length ? `<div><div class="eyebrow">Could also be</div>${list(a.differential)}</div>` : ""}
+        <div class="confidence">
+          <div class="row between small"><strong>Model confidence ${fmt.pct(a.confidence)}</strong><span class="muted">rough indicator · image quality ${esc(a.image_quality || "—")}</span></div>
+          <div class="track"><i style="width:${fmt.pct(a.confidence)}"></i></div>
+          <div class="tiny muted">${esc(d.confidence_note)}</div>
+        </div>
+        ${d.recapture_tips && d.recapture_tips.length ? `<div class="notice warn"><div><strong>For a clearer assessment, try recapturing:</strong>${list(d.recapture_tips)}</div></div>` : ""}
+      </div>
+      ${d.findings ? `
+      <div class="card findings fade-in">
+        <div class="row between wrap"><h2>Agent-retrieved information</h2>
+          <span class="badge ${d.web_grounded ? "on" : "warn"}">${d.web_grounded ? `${cited.length} cited web source(s)` : "general knowledge — not web-grounded"}</span></div>
+        <p style="margin:10px 0 0">${GAIA.md(f.headline || "").replace(/^<p>|<\/p>$/g, "")}</p>
+        ${f.condition_overview ? `<h3>About the condition</h3><p style="margin:0">${GAIA.md(f.condition_overview).replace(/^<p>|<\/p>$/g, "")}</p>` : ""}
+        ${f.symptoms_to_check && f.symptoms_to_check.length ? `<h3>Symptoms to check</h3>${list(f.symptoms_to_check)}` : ""}
+        ${f.possible_causes && f.possible_causes.length ? `<h3>Possible causes</h3>${list(f.possible_causes)}` : ""}
+        ${f.recommended_actions && f.recommended_actions.length ? `<h3>Recommended actions</h3>${list(f.recommended_actions)}` : ""}
+        ${f.preventive_measures && f.preventive_measures.length ? `<h3>Prevention</h3>${list(f.preventive_measures)}` : ""}
+        ${f.care_guidance && f.care_guidance.length ? `<h3>Care guidance</h3>${list(f.care_guidance)}` : ""}
+        ${f.distinguishing_checks && f.distinguishing_checks.length ? `<h3>How to confirm</h3>${list(f.distinguishing_checks)}` : ""}
+        ${f.when_to_consult_expert ? `<h3>When to consult an expert</h3><p style="margin:0">${GAIA.md(f.when_to_consult_expert).replace(/^<p>|<\/p>$/g, "")}</p>` : ""}
+        ${cited.length || uncited.length ? `<h3>Sources</h3><div class="sources">${[...cited, ...uncited].map((s) => `
+          <div class="source"><div class="src-title"><span class="cite w">${esc(s.id)}</span><a class="truncate" href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a></div>
+          <div class="tiny muted">${esc(s.domain)} · ${esc(String(s.quality).replace(/_/g, " "))} source${s.cited ? " · cited" : " · consulted"}</div></div>`).join("")}</div>` : ""}
+        ${d.agent_trace && d.agent_trace.length ? `<details class="trace" style="margin-top:12px"><summary>Agent reasoning trace</summary><pre>${esc(d.agent_trace.map((t) => `Round ${t.round}: ${t.rationale}\n  queries: ${(t.queries || []).join(" | ") || "none"}${t.new_results !== undefined ? `\n  new results: ${t.new_results}` : ""}`).join("\n"))}</pre></details>` : ""}
+      </div>` : ""}
+      ${d.knowledge_chunk_ids && d.knowledge_chunk_ids.length ? `<div class="notice info"><svg class="icon sm"><use href="#i-book"/></svg><span>Added to your farm knowledge store (${d.knowledge_chunk_ids.length} entries). You can ask about it later in “Query my farm”.</span></div>` : ""}
+      <div class="notice warn tiny"><svg class="icon sm"><use href="#i-info"/></svg><span>${esc(d.disclaimer)}</span></div>`;
+    setStage("done", d.status);
+  }
+
+  async function loadHistory() {
+    try {
+      const rows = await api("/diagnoses?limit=12");
+      el("history").innerHTML = rows.length ? rows.map((r) => `
+        <a class="list-item" href="?id=${esc(r.id)}" data-id="${esc(r.id)}" style="text-decoration:none;color:inherit">
+          <img class="thumb" src="${esc(r.image_url)}" alt="" loading="lazy">
+          <div class="grow"><div class="truncate"><strong>${esc(r.plant || "Processing…")}</strong> · ${esc(r.diagnosis || r.status)}</div>
+          <div class="tiny muted">${esc(fmt.dateTime(r.created_at))} · ${esc(r.source)}</div></div>
+          <span class="pill ${esc(r.health_status || (r.status === "failed" ? "bad" : "neutral"))}">${esc(r.health_status || r.status)}</span></a>`).join("")
+        : '<div class="empty">No diagnoses yet.</div>';
+      el("history").querySelectorAll("[data-id]").forEach((a) => a.onclick = (e) => { e.preventDefault(); poll(a.dataset.id); });
+    } catch (e) { el("history").innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+  }
+
+  el("reload-history").onclick = loadHistory;
+  loadHistory();
+  const id = new URLSearchParams(location.search).get("id");
+  if (id) poll(id); else el("result").innerHTML = `<div class="card tint small">The VLM returns strict JSON (plant, health status, possible diagnosis, visual evidence, confidence). “Uncertain” results go through the same research step, and the uncertainty is preserved.</div>`;
+})();
+</script>
+{% endblock %}

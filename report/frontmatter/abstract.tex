@@ -1,0 +1,26 @@
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+
+Crop-protection tools are mostly reactive: they work only after a farmer has noticed a symptom and photographed it. This
+project presents \textbf{GAIA}, a rover-assisted Generative AI system for proactive crop health monitoring. A small rover
+(ESP32-CAM, Arduino Nano, DHT11, MQ-5, MQ-6 and a servo-mounted soil-moisture probe) is only a thin data-acquisition layer. The
+effort is concentrated in two independent Generative AI pipelines that share one knowledge store (PostgreSQL with pgvector)
+and are delivered through a Flutter application and a Python (FastAPI) backend.
+
+\emph{Pipeline A} is a conversational assistant. A language model turns a question into a structured query plan, SQL computes exact
+statistics, a hybrid retriever (vector and full-text search fused by Reciprocal Rank Fusion) returns relevant chunks, and Gemini
+writes a streamed answer whose citations are validated against the retrieved context. \emph{Pipeline B} diagnoses crops: one
+vision-language call turns a photograph into strict JSON, and one research agent searches the web for care or treatment
+information; the result is shown with sources and written one way into the knowledge store.
+
+To save battery, every sensor can be switched on or off. The backend records switches, readings and rover heartbeats, so data gaps
+are explained by code (``MQ5 was switched off from 06:00 to 09:20'') and not guessed by the model. A Live view animates readings arriving,
+windows closing, and chunks being written, embedded and stored.
+
+The system was verified with 96 backend and 22 application tests and by compiling both firmware sketches. On a deterministic
+synthetic farm, planner accuracy, numeric recall and citation accuracy were all 100\,\% on ten questions. The backend ingested about
+5,000 sensor values per second and indexed a 15-minute window in about 73\,ms. Model confidence is shown as an uncalibrated
+indicator, and diagnoses are phrased as possibilities.
+
+\noindent\textbf{Keywords:} Generative AI, Retrieval-Augmented Generation, Vision-Language Model, Agriculture, IoT, pgvector, Gemini, Flutter.
+\clearpage

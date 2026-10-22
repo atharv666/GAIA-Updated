@@ -1,0 +1,15 @@
+{
+  "device_id": "rover-01",
+  "readings": [
+    {
+      "ts": 1790000000,
+      "values": {"temperature": 28.1, "humidity": 58.0, "mq5": 205, "mq6": 188},
+      "state": {"moving": true, "arm_deployed": false, "soil_valid": false}
+    },
+    {
+      "ts": 1790000005,
+      "values": {"temperature": 28.2, "humidity": 58.0, "mq5": 207, "mq6": 189},
+      "state": {"moving": true, "arm_deployed": false, "soil_valid": false}
+    }
+  ]
+}

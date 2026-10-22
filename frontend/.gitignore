@@ -1,0 +1,21 @@
+# Flutter / Dart
+*.class
+*.log
+*.swp
+.DS_Store
+.idea/
+*.iml
+.history
+migrate_working_dir/
+**/doc/api/
+.dart_tool/
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+/coverage/
+app.*.symbols
+app.*.map.json
+/android/app/debug
+/android/app/profile
+/android/app/release

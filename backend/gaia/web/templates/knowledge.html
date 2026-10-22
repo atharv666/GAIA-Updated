@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}Knowledge{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="eyebrow">Shared knowledge store</p>
+    <h1>What Gaia remembers.</h1>
+    <p class="subtitle">Sensor summaries, crop diagnoses, agent findings and your own notes — the long-term memory both pipelines share.</p>
+  </div>
+</div>
+
+<div id="stats" class="grid auto"></div>
+
+<div class="split" style="margin-top:22px">
+  <div class="stack">
+    <div class="card">
+      <h2>Retrieval inspector</h2>
+      <p class="small muted" style="margin:4px 0 12px">Runs the same hybrid search the chatbot uses: pgvector cosine similarity + full-text ranking, fused with Reciprocal Rank Fusion.</p>
+      <form id="search-form" class="row">
+        <input id="q" type="search" placeholder="e.g. high humidity fungal risk" aria-label="Search query">
+        <button class="btn" type="submit"><svg class="icon sm"><use href="#i-search"/></svg>Search</button>
+      </form>
+      <div id="search-results" class="sources" style="margin-top:12px"></div>
+    </div>
+    <div class="card">
+      <div class="row between"><h2>Browse</h2>
+        <select id="type" style="max-width:220px" aria-label="Source type">
+          <option value="">All types</option><option>sensor_window</option><option>sensor_daily</option><option>sensor_sessions</option><option>sensor_digest_llm</option>
+          <option>diagnosis</option><option>agent_finding</option><option>farm_note</option><option>document</option>
+        </select></div>
+      <div id="chunks" class="sources" style="margin-top:12px"></div>
+      <button id="more" class="btn soft sm" style="margin-top:12px">Load more</button>
+    </div>
+  </div>
+  <div class="stack">
+    <form id="note-form" class="card stack">
+      <h2>Add a farm note</h2>
+      <label class="field">Title<input id="note-title" type="text" maxlength="200" placeholder="Planting log" required></label>
+      <label class="field">Note<textarea id="note-text" placeholder="Planted tomato (Arka Rakshak) in the north plot on 2 Sep. Drip irrigation 30 min every morning." required></textarea></label>
+      <button class="btn" type="submit"><svg class="icon sm"><use href="#i-plus"/></svg>Save note</button>
+    </form>
+    <form id="doc-form" class="card stack">
+      <h2>Upload a document</h2>
+      <span class="small muted">PDF, TXT, MD or CSV — e.g. a soil test report or crop advisory. It is chunked and embedded.</span>
+      <input id="doc-file" type="file" accept=".pdf,.txt,.md,.csv" required>
+      <button class="btn" type="submit">Upload</button>
+    </form>
+    <div class="card">
+      <h2>Your notes &amp; documents</h2>
+      <div id="docs" class="list"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(() => {
+  const { api, esc, fmt, toast } = GAIA;
+  const el = (id) => document.getElementById(id);
+  let offset = 0;
+  const TYPE_BG = { sensor_window: "bg-plant", sensor_daily: "bg-plant", sensor_sessions: "bg-plant", sensor_digest_llm: "bg-air", diagnosis: "bg-soil",
+                    agent_finding: "bg-water", farm_note: "bg-mist", document: "bg-mist" };
+
+  const chunkHtml = (c, extra = "") => `<div class="source">
+    <div class="src-title"><span class="badge">${esc(c.source_type.replace(/_/g, " "))}</span><span class="truncate">${esc(c.title)}</span></div>
+    ${extra}<div class="src-snippet">${esc(c.content.length > 600 ? c.content.slice(0, 600) + "…" : c.content)}</div></div>`;
+
+  async function loadStats() {
+    const s = await api("/knowledge/stats");
+    el("stats").innerHTML = [["total", s.total], ...Object.entries(s.by_type)].map(([k, n]) => `
+      <div class="metric ${TYPE_BG[k] || "bg-white"}"><div class="value">${n}</div><div class="label">${esc(k === "total" ? "Total entries" : k.replace(/_/g, " "))}</div></div>`).join("");
+  }
+
+  async function loadChunks(reset) {
+    if (reset) { offset = 0; el("chunks").innerHTML = ""; }
+    const type = el("type").value;
+    const rows = await api(`/knowledge?limit=15&offset=${offset}${type ? `&source_type=${type}` : ""}`);
+    offset += rows.length;
+    el("chunks").insertAdjacentHTML("beforeend", rows.map((c) => chunkHtml(c, `<div class="tiny muted">${esc(fmt.dateTime(c.created_at))} · ${esc(c.embed_model)}</div>`)).join("") || (reset ? '<div class="empty">Nothing stored yet.</div>' : ""));
+    el("more").classList.toggle("hidden", rows.length < 15);
+  }
+
+  async function loadDocs() {
+    const docs = await api("/knowledge/documents");
+    el("docs").innerHTML = docs.length ? docs.map((d) => `<div class="list-item"><div class="grow"><div class="truncate"><strong>${esc(d.title)}</strong></div>
+      <div class="tiny muted">${esc(d.kind)} · ${d.chunk_count} chunk(s) · ${esc(fmt.ago(d.created_at))}</div></div>
+      <button class="btn ghost sm icon-only" data-del="${esc(d.id)}" aria-label="Delete"><svg class="icon sm"><use href="#i-trash"/></svg></button></div>`).join("")
+      : '<div class="empty">No notes yet.</div>';
+    el("docs").querySelectorAll("[data-del]").forEach((b) => b.onclick = async () => {
+      if (!confirm("Delete this note/document and its knowledge entries?")) return;
+      await api(`/knowledge/documents/${b.dataset.del}`, { method: "DELETE" });
+      toast("Deleted"); loadDocs(); loadStats(); loadChunks(true);
+    });
+  }
+
+  el("search-form").onsubmit = async (e) => {
+    e.preventDefault();
+    const q = el("q").value.trim(); if (!q) return;
+    el("search-results").innerHTML = '<div class="spinner"></div>';
+    try {
+      const r = await api(`/knowledge/search?q=${encodeURIComponent(q)}&k=8`);
+      el("search-results").innerHTML = r.results.length ? r.results.map((c, i) => chunkHtml(c,
+        `<div class="tiny muted">#${i + 1} · fused ${c.score.toFixed(4)} · vector ${c.vector_similarity === null ? "—" : c.vector_similarity.toFixed(3)} (rank ${c.vector_rank ?? "—"}) · lexical rank ${c.lexical_rank ?? "—"}</div>`)).join("")
+        : '<div class="empty">No matches.</div>';
+      el("search-results").insertAdjacentHTML("afterbegin", `<div class="tiny muted">Embedder: ${esc(r.embedder)}</div>`);
+    } catch (err) { el("search-results").innerHTML = `<div class="notice error">${esc(err.message)}</div>`; }
+  };
+
+  el("note-form").onsubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await api("/knowledge/notes", { method: "POST", json: { title: el("note-title").value, text: el("note-text").value } });
+      e.target.reset(); toast("Note saved and indexed"); loadDocs(); loadStats(); loadChunks(true);
+    } catch (err) { toast(err.message, "error"); }
+  };
+  el("doc-form").onsubmit = async (e) => {
+    e.preventDefault();
+    const form = new FormData(); form.append("file", el("doc-file").files[0]);
+    try {
+      const r = await api("/knowledge/documents", { method: "POST", form });
+      e.target.reset(); toast(`Indexed ${r.chunk_ids.length} chunk(s)`); loadDocs(); loadStats(); loadChunks(true);
+    } catch (err) { toast(err.message, "error"); }
+  };
+  el("type").onchange = () => loadChunks(true);
+  el("more").onclick = () => loadChunks(false);
+
+  Promise.all([loadStats(), loadChunks(true), loadDocs()]).catch((e) => toast(e.message, "error"));
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,25 @@
+\scaledtikz{\begin{tikzpicture}
+\node[dbox,text width=24mm] (bat) at (0,0) {\textbf{Li-ion pack}\\2S2P, 7.4 V\\nominal, 8.4 V full};
+\node[box,text width=24mm] (buck) at (4.2,0) {\textbf{5 V regulator}\\(buck converter)};
+\node[gbox,text width=28mm] (esp) at (8.6,0) {\textbf{ESP32-CAM}\\Wi-Fi, camera,\\HTTP API, push};
+\node[gbox,text width=28mm] (nano) at (8.6,-3.4) {\textbf{Arduino Nano}\\sensor, drive and\\arm controller};
+\node[box,text width=24mm] (drv) at (4.2,-5.6) {\textbf{L298N}\\motor driver};
+\node[gbox,text width=24mm] (mot) at (4.2,-7.8) {\textbf{2 DC motors}\\300 RPM geared};
+\node[dsh,text width=26mm] (net) at (13.6,1.4) {\textbf{Phone and server}\\(Wi-Fi network)};
+\node[box,text width=26mm] (dht) at (13.6,-0.9) {\textbf{DHT11}\\temperature,\\humidity};
+\node[box,text width=26mm] (mq) at (13.6,-3.0) {\textbf{MQ-5, MQ-6}\\gas sensors, via\\electronic switches};
+\node[box,text width=26mm] (soil) at (13.6,-5.1) {\textbf{Soil probe}\\on a servo arm};
+\node[box,text width=26mm] (us) at (13.6,-6.8) {\textbf{HC-SR04}\\obstacle distance};
+\draw[arr] (bat) -- (buck);
+\draw[arr] (bat.south) |- (drv.west);
+\draw[arr] (buck) -- (esp);
+\draw[arr] (buck.south) |- (nano.west);
+\draw[arr] (drv) -- (mot);
+\draw[barr] (esp) -- node[lbl,right]{UART 57600} (nano);
+\draw[arr] (nano.south) |- node[lbl,pos=0.8,above]{PWM, direction} (drv.east);
+\draw[barr] (esp.east) -| node[lbl,pos=0.2,above]{HTTP} (net.south);
+\draw[arr] (nano.east) -- ++(0.9,0) |- (dht.west);
+\draw[arr] (nano.east) -- ++(0.9,0) |- (mq.west);
+\draw[arr] (nano.east) -- ++(0.9,0) |- (soil.west);
+\draw[arr] (nano.east) -- ++(0.9,0) |- (us.west);
+\end{tikzpicture}}

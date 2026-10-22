@@ -1,0 +1,17 @@
+# Editors / OS
+.DS_Store
+.idea/
+*.iml
+.vscode/*.local.json
+
+# Backend (Python)
+backend/.venv/
+backend/.env
+backend/data/
+backend/.pytest_cache/
+**/__pycache__/
+*.pyc
+*.log
+
+# Frontend build output (frontend/.gitignore covers the rest)
+frontend/build/

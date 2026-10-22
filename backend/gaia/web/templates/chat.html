@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+{% block title %}Gaia AI{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="eyebrow">Pipeline A · RAG assistant</p>
+    <h1>Ask Gaia a better question.</h1>
+    <p class="subtitle">Your sensor log, crop diagnoses and farm notes — or anything else, with web sources.</p>
+  </div>
+  <div class="row wrap">
+    <div class="segmented" role="tablist" aria-label="Chat mode">
+      <button id="mode-farm" class="on" role="tab">Query my farm</button>
+      <button id="mode-open" role="tab">Open-ended</button>
+    </div>
+    <button id="new-chat" class="btn soft sm"><svg class="icon sm"><use href="#i-plus"/></svg>New chat</button>
+  </div>
+</div>
+
+<div class="chat-shell">
+  <div id="messages" class="messages" aria-live="polite"></div>
+  <div id="suggestions" class="chips" style="margin-bottom:12px"></div>
+  <form id="composer" class="composer">
+    <textarea id="input" rows="1" placeholder="Ask about your field…" aria-label="Message"></textarea>
+    <button id="send" class="btn icon-only" type="submit" aria-label="Send"><svg class="icon"><use href="#i-send"/></svg></button>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(() => {
+  const { api, esc, md, toast, store } = GAIA;
+  const el = (id) => document.getElementById(id);
+  const messages = el("messages"), input = el("input"), send = el("send");
+  const SUGGEST = {
+    farm: ["How humid was my field this morning?", "What was the average soil moisture today?",
+           "Was the soil moisture lower than yesterday?", "What crop problems have been identified?",
+           "Any unusual gas readings this week?", "Summarise my field today"],
+    open: ["How do I prevent early blight in tomatoes?", "Best time to sow wheat in North India?",
+           "What is drip irrigation's water saving?", "Explain PM-KISAN eligibility"],
+  };
+  let mode = store.get("gaia.chat.mode", "farm");
+  let sessionId = store.get("gaia.chat.session");
+  let busy = false;
+
+  const GREETING = {
+    farm: `Hello ${ {{ farmer_name|tojson }} }. I'm grounded in your sensor log and farm knowledge store. Ask me anything about your field.`,
+    open: "Open-ended mode: I'll search the web and cite sources. For questions about your own field, switch to “Query my farm”.",
+  };
+
+  function setMode(m) {
+    mode = m; store.set("gaia.chat.mode", m);
+    el("mode-farm").classList.toggle("on", m === "farm");
+    el("mode-open").classList.toggle("on", m === "open");
+    input.placeholder = m === "farm" ? "Ask about your field…" : "Ask Gaia anything…";
+    renderSuggestions();
+  }
+
+  function renderSuggestions() {
+    const box = el("suggestions");
+    const show = messages.querySelectorAll(".msg.user").length === 0;
+    box.innerHTML = show ? SUGGEST[mode].map((q) => `<button class="chip" type="button">${esc(q)}</button>`).join("") : "";
+    box.querySelectorAll(".chip").forEach((b) => b.onclick = () => { input.value = b.textContent; ask(); });
+  }
+
+  function bubble(role, html) {
+    const div = document.createElement("div");
+    div.className = `msg ${role} fade-in`;
+    div.innerHTML = html;
+    messages.appendChild(div);
+    messages.scrollTop = messages.scrollHeight;
+    return div;
+  }
+
+  const KIND_LABEL = { sensor_fact: "Sensor data", knowledge: "Knowledge store", web: "Web" };
+
+  function sourceHtml(s) {
+    const cls = s.id[0] === "K" ? "k" : s.id[0] === "W" ? "w" : "";
+    const when = s.time_start ? ` · ${GAIA.fmt.dateTime(s.time_start)}` : "";
+    const link = s.url ? ` <a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.domain || "open")}</a>` : "";
+    const quality = s.quality === "institutional" ? ' <span class="badge on">institutional</span>' : "";
+    return `<div class="source" data-src="${esc(s.id)}">
+      <div class="src-title"><span class="cite ${cls}">${esc(s.id)}</span><span class="truncate">${esc(s.title)}</span></div>
+      <div class="tiny muted">${esc(KIND_LABEL[s.kind] || s.kind)}${esc(s.source_type ? " · " + s.source_type.replace(/_/g, " ") : "")}${esc(when)}${link}${quality}</div>
+      <div class="src-snippet">${esc(s.snippet)}</div></div>`;
+  }
+
+  function answerHtml(r) {
+    const g = r.grounding || {};
+    const badges = [
+      g.farm_data && '<span class="badge on">From your sensor data</span>',
+      g.knowledge_store && '<span class="badge on">From your knowledge store</span>',
+      g.web && '<span class="badge on">Web sources</span>',
+      g.general_knowledge && '<span class="badge warn">Includes general knowledge</span>',
+      g.insufficient_data && '<span class="badge warn">Data incomplete</span>',
+      r.llm_used === false && '<span class="badge warn">LLM offline</span>',
+    ].filter(Boolean).join("");
+    const cited = new Set((r.sources || []).map((s) => s.id));
+    const others = (r.context || []).filter((s) => !cited.has(s.id));
+    const plan = r.plan || {};
+    const trace = [
+      plan.intent && `intent: ${plan.intent} (${plan.planner} planner)`,
+      plan.sensors && plan.sensors.length && `sensors: ${plan.sensors.join(", ")}`,
+      plan.resolved_ranges && plan.resolved_ranges.length && `time: ${plan.resolved_ranges.map((x) => `${x.label} = ${x.description}`).join("; ")}`,
+      plan.search_query && `search query: “${plan.search_query}”`,
+      plan.queries && plan.queries.length && `web queries: ${plan.queries.join(" | ")}`,
+      plan.ingestion && `ingestion: ${plan.ingestion.windows_indexed} windows indexed, ${plan.ingestion.open_windows} open`,
+      r.timings_ms && `timings: ${Object.entries(r.timings_ms).map(([k, v]) => `${k} ${v} ms`).join(", ")}`,
+    ].filter(Boolean).join("\n");
+    return `${md(r.answer)}
+      <div class="msg-foot">
+        ${badges ? `<div class="badges">${badges}</div>` : ""}
+        ${(r.notices || []).map((n) => `<div class="notice info tiny">${esc(n)}</div>`).join("")}
+        ${r.sources && r.sources.length ? `<div class="sources">${r.sources.map(sourceHtml).join("")}</div>` : ""}
+        ${others.length ? `<details class="trace"><summary>${others.length} more retrieved item(s) not cited</summary><div class="sources" style="margin-top:8px">${others.map(sourceHtml).join("")}</div></details>` : ""}
+        ${trace ? `<details class="trace"><summary>How I found this</summary><pre>${esc(trace)}</pre></details>` : ""}
+        ${(r.follow_ups || []).length ? `<div class="chips">${r.follow_ups.map((q) => `<button class="chip follow" type="button">${esc(q)}</button>`).join("")}</div>` : ""}
+      </div>`;
+  }
+
+  messages.addEventListener("click", (e) => {
+    const cite = e.target.closest("[data-cite]");
+    if (cite) {
+      const src = cite.closest(".msg").querySelector(`[data-src="${cite.dataset.cite}"]`);
+      if (src) { src.closest("details")?.setAttribute("open", ""); src.scrollIntoView({ behavior: "smooth", block: "center" });
+                 src.classList.remove("flash"); void src.offsetWidth; src.classList.add("flash"); }
+    }
+    const follow = e.target.closest(".follow");
+    if (follow) { input.value = follow.textContent; ask(); }
+  });
+
+  async function ask() {
+    const text = input.value.trim();
+    if (!text || busy) return;
+    busy = true; send.disabled = true;
+    bubble("user", esc(text));
+    input.value = ""; autosize(); renderSuggestions();
+    const pending = bubble("gaia", `<span class="typing"><i></i><i></i><i></i></span> <span class="small muted">${mode === "farm" ? "Syncing sensor log and retrieving farm data…" : "Searching the web…"}</span>`);
+    try {
+      const r = await api("/chat", { method: "POST", json: { message: text, mode, session_id: sessionId } });
+      sessionId = r.session_id; store.set("gaia.chat.session", sessionId);
+      pending.innerHTML = answerHtml(r);
+    } catch (e) {
+      pending.innerHTML = `<div class="notice error">${esc(e.message)}</div>`;
+    } finally {
+      busy = false; send.disabled = false; input.focus();
+      messages.scrollTop = messages.scrollHeight;
+    }
+  }
+
+  async function restore() {
+    messages.innerHTML = "";
+    bubble("gaia", md(GREETING[mode]));
+    if (!sessionId) return renderSuggestions();
+    try {
+      const s = await api(`/chat/sessions/${sessionId}`);
+      for (const m of s.messages) {
+        if (m.role === "user") bubble("user", esc(m.content));
+        else bubble("gaia", answerHtml({ answer: m.content, sources: m.sources || [], grounding: m.grounding || {}, follow_ups: [] }));
+      }
+    } catch { sessionId = null; store.del("gaia.chat.session"); }
+    renderSuggestions();
+  }
+
+  function autosize() { input.style.height = "auto"; input.style.height = Math.min(input.scrollHeight, 160) + "px"; }
+  input.addEventListener("input", autosize);
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(); } });
+  el("composer").addEventListener("submit", (e) => { e.preventDefault(); ask(); });
+  el("mode-farm").onclick = () => setMode("farm");
+  el("mode-open").onclick = () => setMode("open");
+  el("new-chat").onclick = () => { sessionId = null; store.del("gaia.chat.session"); restore(); toast("Started a new conversation"); };
+  // Deep link: /chat?q=...&mode=farm|open asks a question straight away (starting a fresh conversation).
+  const params = new URLSearchParams(location.search);
+  if (params.get("mode") === "farm" || params.get("mode") === "open") mode = params.get("mode");
+  if (params.get("q")) { sessionId = null; store.del("gaia.chat.session"); }
+  setMode(mode);
+  restore().then(() => {
+    if (params.get("q")) { input.value = params.get("q"); history.replaceState(null, "", "/chat"); ask(); }
+  });
+})();
+</script>
+{% endblock %}

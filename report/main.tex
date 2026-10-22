@@ -1,0 +1,210 @@
+% ============================================================================
+%  GAIA - B.Tech MDM Capstone Project Report (Generative AI)
+%  PCCOE, Department of Computer Science and Engineering (AI & ML), 2026-27
+%
+%  Compile with pdfLaTeX (Overleaf default), main file: main.tex.
+%  Bibliography: BibTeX + IEEEtran (references.bib).
+%  Everything you need to edit is in the "EDIT HERE" block below.
+% ============================================================================
+\documentclass[12pt,a4paper]{report}
+
+% ---------------------------------------------------------------------------
+% Fonts, page geometry, spacing (format instructions 2-5)
+% ---------------------------------------------------------------------------
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{mathptmx}                      % Times Roman text and math
+\usepackage[scaled=.90]{helvet}
+\usepackage{courier}
+\usepackage[a4paper,top=23.4mm,left=37mm,bottom=32mm,right=23.4mm,footskip=14mm]{geometry}
+\usepackage{setspace}
+\onehalfspacing                             % 1.5 line spacing
+\setlength{\parindent}{5ex}                 % five-space paragraph indentation
+\setlength{\parskip}{12pt plus 1pt minus 1pt} % single line space between paragraphs
+\usepackage{microtype}
+\setlength{\emergencystretch}{3em}          % avoids lines running into the margin
+
+% ---------------------------------------------------------------------------
+% Packages
+% ---------------------------------------------------------------------------
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{multirow}
+\usepackage{amsmath,amssymb}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{listings}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,shapes.multipart,fit,calc,backgrounds}
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+
+\setlist{itemsep=2pt,parsep=0pt,topsep=4pt}
+\setlist[itemize]{leftmargin=2em}
+\setlist[enumerate]{leftmargin=2.2em}
+
+% ---------------------------------------------------------------------------
+% Headings (format instructions 6-9, 16)
+%   chapter    : bold, 14 pt, CAPITALS, centred
+%   section    : bold, 12 pt, CAPITALS, left
+%   subsection : bold, 12 pt, Title Case, left
+% ---------------------------------------------------------------------------
+\titleformat{\chapter}[display]
+  {\normalfont\bfseries\fontsize{14}{17}\selectfont\centering}
+  {CHAPTER \thechapter}{6pt}{\MakeUppercase}
+\titleformat{name=\chapter,numberless}[block]
+  {\normalfont\bfseries\fontsize{14}{17}\selectfont\centering}
+  {}{0pt}{\MakeUppercase}
+\titlespacing*{\chapter}{0pt}{0pt}{20pt}
+\titleformat{\section}
+  {\normalfont\bfseries\fontsize{12}{14}\selectfont}{\thesection}{1em}{\MakeUppercase}
+\titlespacing*{\section}{0pt}{24pt}{12pt}   % two spaces before / after a section heading
+\titleformat{\subsection}
+  {\normalfont\bfseries\fontsize{12}{14}\selectfont}{\thesubsection}{1em}{}
+\titlespacing*{\subsection}{0pt}{12pt}{6pt} % one space between sub-headings
+\titleformat{\subsubsection}
+  {\normalfont\bfseries\itshape\fontsize{12}{14}\selectfont}{\thesubsubsection}{1em}{}
+\titlespacing*{\subsubsection}{0pt}{10pt}{4pt}
+\setcounter{secnumdepth}{3}
+\setcounter{tocdepth}{1}                    % table of contents lists chapters and sections
+
+% ---------------------------------------------------------------------------
+% Footer (format instructions 2 and 12): 10 pt Times, centred, page number below
+% ---------------------------------------------------------------------------
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\fancyfoot[C]{\fontsize{10}{12}\selectfont PCCOE, Department of Computer Science and Engineering (AI \& ML) 2026-27\\[3pt]\thepage}
+\fancypagestyle{plain}{\fancyhf{}\renewcommand{\headrulewidth}{0pt}%
+  \fancyfoot[C]{\fontsize{10}{12}\selectfont PCCOE, Department of Computer Science and Engineering (AI \& ML) 2026-27\\[3pt]\thepage}}
+
+% ---------------------------------------------------------------------------
+% Captions (format instructions 10-11): figure caption below, table caption above, 10 pt
+% ---------------------------------------------------------------------------
+\DeclareCaptionFont{tenpt}{\fontsize{10}{12}\selectfont}
+\captionsetup{font=tenpt,labelfont=bf,skip=6pt}
+\captionsetup[table]{position=above,skip=6pt}
+\captionsetup[figure]{position=below}
+\renewcommand{\arraystretch}{1.25}
+\usepackage{ragged2e}
+\newcolumntype{P}[1]{>{\RaggedRight\arraybackslash}p{#1}}
+
+% ---------------------------------------------------------------------------
+% Listings
+% ---------------------------------------------------------------------------
+\lstset{basicstyle=\ttfamily\fontsize{9}{10.5}\selectfont,frame=single,breaklines=true,
+        columns=fullflexible,keepspaces=true,showstringspaces=false,
+        xleftmargin=0pt,framexleftmargin=0pt,aboveskip=6pt,belowskip=6pt}
+
+% ---------------------------------------------------------------------------
+% Diagram styles (black and white, vector, editable)
+% ---------------------------------------------------------------------------
+\newcommand{\dgfont}{\fontsize{9}{10.5}\selectfont}
+\tikzset{
+  nohyph/.style={},
+  box/.style={nohyph,draw,rectangle,rounded corners=1.5pt,minimum height=7.5mm,align=center,font=\dgfont,fill=white,inner sep=3pt},
+  gbox/.style={box,fill=black!10},
+  dbox/.style={box,fill=black!22},
+  dsh/.style={box,dashed},
+  db/.style={nohyph,draw,cylinder,shape border rotate=90,aspect=0.25,minimum height=11mm,align=center,font=\dgfont,fill=black!10,inner sep=2pt},
+  arr/.style={-{Stealth[length=2.2mm]},thick},
+  darr/.style={-{Stealth[length=2.2mm]},thick,dashed},
+  barr/.style={{Stealth[length=2.2mm]}-{Stealth[length=2.2mm]},thick},
+  lbl/.style={font=\fontsize{7.5}{9}\selectfont,fill=white,inner sep=1pt},
+  zone/.style={draw,rounded corners=3pt,dashed,inner sep=7pt},
+  zlbl/.style={font=\fontsize{8}{9}\selectfont\bfseries,fill=white,inner sep=1pt},
+}
+
+% ============================================================================
+%  EDIT HERE: project identity (used on the cover page and the certificate)
+% ============================================================================
+\newcommand{\GroupID}{\rule{2.5cm}{0.4pt}}
+\newcommand{\ProjectTitle}{GAIA: A ROVER-ASSISTED GENERATIVE AI SYSTEM FOR PROACTIVE CROP HEALTH MONITORING}
+\newcommand{\ProjectTitleLong}{GAIA: A Rover-Assisted Generative AI System for Proactive Crop Health Monitoring using Sensor-Grounded Retrieval-Augmented Chat and Vision-Language Diagnosis}
+\newcommand{\DeptName}{Computer Science and Engineering (AI \& ML)}
+\newcommand{\StudentA}{STUDENT NAME 1}\newcommand{\PRNA}{\rule{2.5cm}{0.4pt}}
+\newcommand{\StudentB}{STUDENT NAME 2}\newcommand{\PRNB}{\rule{2.5cm}{0.4pt}}
+\newcommand{\StudentC}{STUDENT NAME 3}\newcommand{\PRNC}{\rule{2.5cm}{0.4pt}}
+\newcommand{\StudentD}{STUDENT NAME 4}\newcommand{\PRND}{\rule{2.5cm}{0.4pt}}
+\newcommand{\GuideName}{GUIDE NAME}
+\newcommand{\GuideProf}{Prof. GUIDE NAME}
+\newcommand{\CertDate}{\rule{3cm}{0.4pt}}
+
+% Draft mode highlights every spot you still have to fill in (names, photos, results).
+% Set \draftfalse before printing the final copy.
+\newif\ifdraft \drafttrue
+\newcommand{\placeholder}[1]{\ifdraft\colorbox{yellow}{#1}\else #1\fi}
+% \placeholderblock: a highlighted paragraph that wraps (for long instructions); \blank{width}: an empty field to fill in
+\newcommand{\placeholderblock}[1]{\ifdraft\par\noindent\colorbox{yellow}{\parbox{\dimexpr\linewidth-2\fboxsep\relax}{#1}}\par\else #1\fi}
+\newcommand{\blank}[1]{\ifdraft\colorbox{yellow}{\rule{#1}{0pt}\strut}\else\rule{#1}{0.4pt}\fi}
+
+% \imgslot[height]{file}{width as fraction of text width}{what to insert}
+% Shows figures/<file> when it exists, otherwise an empty frame so you can add the photo later.
+\newcommand{\imgslot}[4][55mm]{%
+  \IfFileExists{figures/#2}%
+    {\includegraphics[width=#3\linewidth]{figures/#2}}%
+    {\fbox{\parbox[c][#1][c]{#3\linewidth}{\centering\small\placeholderblock{\centering Insert image: #4}\vspace{2pt}{\ttfamily\fontsize{7}{8}\selectfont\detokenize{figures/#2}}}}}}
+
+% \scaledtikz{...}: shrink a diagram to the text width if it is wider
+\newcommand{\scaledtikz}[1]{\begingroup\hyphenpenalty=10000\relax\exhyphenpenalty=10000\relax\resizebox{\linewidth}{!}{#1}\endgroup}
+
+\begin{document}
+
+% ---------------------------------------------------------------------------
+%  Front matter (Roman numerals)
+% ---------------------------------------------------------------------------
+\pagenumbering{roman}
+\input{frontmatter/cover}
+\input{frontmatter/certificate}
+% Certificate from industry: not applicable (no industry sponsor). Add \input{frontmatter/industry_certificate} if needed.
+\input{frontmatter/acknowledgement}
+\input{frontmatter/abstract}
+
+\renewcommand{\contentsname}{Table of Contents}
+\clearpage
+\tableofcontents
+
+\input{frontmatter/abbreviations}
+\input{frontmatter/nomenclature}
+\renewcommand{\listfigurename}{List of Figures}
+\renewcommand{\listtablename}{List of Tables}
+\clearpage
+\listoffigures
+\clearpage
+\listoftables
+
+% ---------------------------------------------------------------------------
+%  Main matter (Arabic numerals start at the Introduction)
+% ---------------------------------------------------------------------------
+\clearpage
+\pagenumbering{arabic}
+\input{chapters/ch01_introduction}
+\input{chapters/ch02_literature}
+\input{chapters/ch03_requirements}
+\input{chapters/ch04_design}
+\input{chapters/ch05_implementation}
+\input{chapters/ch06_testing}
+\input{chapters/ch07_results}
+\input{chapters/ch08_conclusion}
+
+% ---------------------------------------------------------------------------
+%  References (IEEE format, in order of first citation)
+% ---------------------------------------------------------------------------
+\clearpage
+\addcontentsline{toc}{chapter}{References}
+\renewcommand{\bibname}{References}
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\input{chapters/appendices}
+
+\end{document}

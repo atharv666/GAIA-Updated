@@ -1,0 +1,13 @@
+\scaledtikz{\begin{tikzpicture}
+\draw[arr] (0,0) -- (15.8,0);
+\foreach \x in {1.2,4.6,8.0,11.4,14.6} {\draw[thick] (\x,-0.12) -- (\x,0.12);}
+\node[box,text width=27mm,anchor=south] at (1.2,0.5) {\textbf{Reading}\\every 5 s on the\\ESP32, queued};
+\node[box,text width=27mm,anchor=north] at (4.6,-0.5) {\textbf{Batch posted}\\every 15 s:\\POST /telemetry};
+\node[box,text width=27mm,anchor=south] at (8.0,0.5) {\textbf{Raw rows stored}\\readable at once via\\/telemetry/latest};
+\node[box,text width=27mm,anchor=north] at (11.4,-0.5) {\textbf{Window closes}\\15-minute window\\ends, 90 s grace};
+\node[box,text width=27mm,anchor=south] at (14.6,0.5) {\textbf{Chunk searchable}\\statistics, text and\\embedding ready};
+\node[font=\scriptsize,anchor=north] at (1.2,-0.2) {$t_0$};
+\node[font=\scriptsize,anchor=north] at (8.0,-0.2) {$\approx t_0+15$ s};
+\node[font=\scriptsize,anchor=north,align=center] at (14.6,-0.2) {window end\\$+\,90$ to $150$ s};
+\node[font=\scriptsize,anchor=east] at (15.8,-2.6) {(not to scale)};
+\end{tikzpicture}}

@@ -1,0 +1,53 @@
+{
+  "source_type": "sensor_window",
+  "source_id": "rover-01:2026-10-17T10:30Z",
+  "title": "Sensor window · Sat 17 Oct 2026 16:00–16:15 · rover-01",
+  "content": "Field sensor readings from rover-01 on Saturday 17 October 2026, 16:00–16:15 (afternoon, farm time).\n- Air temperature: average 32.8°C (min 32.1°C, max 33.5°C, 15 readings) — hot: heat stress possible, especially with low soil moisture.\n- Relative humidity: average 49% (min 45%, max 52%, 15 readings) — moderate: comfortable for most crops.\n- Soil moisture: average 39.2% (min 38.4%, max 40.0%, 10 readings) — adequate: suitable for most crops.\n- MQ5 gas index (LPG / natural gas / methane): average 210 ADC (min 180 ADC, max 240 ADC, 15 readings) — baseline: no unusual methane or natural-gas signal.\n- MQ6 gas index (LPG / butane / propane): average 188 ADC (min 167 ADC, max 216 ADC, 15 readings) — baseline: no unusual LPG signal.",
+  "time_start": "2026-10-17T10:30:00+00:00",
+  "time_end": "2026-10-17T10:45:00+00:00",
+  "meta": {
+    "date": "2026-10-17",
+    "kind": "window",
+    "stats": {
+      "mq5": {
+        "avg": 210.067,
+        "max": 240.0,
+        "min": 180.0,
+        "count": 15
+      },
+      "mq6": {
+        "avg": 187.733,
+        "max": 216.0,
+        "min": 167.0,
+        "count": 15
+      },
+      "humidity": {
+        "avg": 48.8,
+        "max": 52.0,
+        "min": 45.0,
+        "count": 15
+      },
+      "temperature": {
+        "avg": 32.84,
+        "max": 33.5,
+        "min": 32.1,
+        "count": 15
+      },
+      "soil_moisture": {
+        "avg": 39.17,
+        "max": 40.0,
+        "min": 38.4,
+        "count": 10
+      }
+    },
+    "sensors": [
+      "humidity",
+      "mq5",
+      "mq6",
+      "soil_moisture",
+      "temperature"
+    ],
+    "day_part": "afternoon",
+    "device_id": "rover-01"
+  }
+}

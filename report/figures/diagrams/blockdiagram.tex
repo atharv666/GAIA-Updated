@@ -1,0 +1,28 @@
+\scaledtikz{\begin{tikzpicture}
+\node[zlbl,anchor=west] at (-1.2,1.3) {A. SENSING AND INGESTION};
+\node[gbox,text width=23mm] (r1) at (0,0) {Sensors\\(DHT11, MQ,\\soil probe)};
+\node[box,text width=23mm] (r2) at (3.5,0) {Nano: sample,\\apply switches};
+\node[box,text width=23mm] (r3) at (7.0,0) {ESP32: queue,\\push every 15 s};
+\node[box,text width=23mm] (r4) at (10.5,0) {POST /telemetry:\\validate, store};
+\node[box,text width=23mm] (r5) at (14.0,0) {15-min windows,\\text chunks,\\embeddings};
+\draw[arr] (r1) -- (r2); \draw[arr] (r2) -- node[lbl,above]{UART} (r3);
+\draw[arr] (r3) -- node[lbl,above]{Wi-Fi} (r4); \draw[arr] (r4) -- (r5);
+\node[zlbl,anchor=west] at (-1.2,-2.0) {B. QUESTION ANSWERING (PIPELINE A)};
+\node[gbox,text width=23mm] (q1) at (0,-3.3) {Farmer's\\question};
+\node[box,text width=23mm] (q2) at (3.5,-3.3) {App: POST\\/chat/stream};
+\node[box,text width=23mm] (q3) at (7.0,-3.3) {Plan, SQL facts,\\hybrid retrieval};
+\node[box,text width=23mm] (q4) at (10.5,-3.3) {Gemini answer,\\citation check};
+\node[box,text width=23mm] (q5) at (14.0,-3.3) {SSE tokens\\to the app};
+\draw[arr] (q1) -- (q2); \draw[arr] (q2) -- (q3); \draw[arr] (q3) -- (q4); \draw[arr] (q4) -- (q5);
+\node[zlbl,anchor=west] at (-1.2,-5.3) {C. CROP DIAGNOSIS (PIPELINE B)};
+\node[gbox,text width=23mm] (c1) at (0,-6.6) {Photo: rover\\/capture or\\phone camera};
+\node[box,text width=23mm] (c2) at (3.5,-6.6) {App: POST\\/diagnoses};
+\node[box,text width=23mm] (c3) at (7.0,-6.6) {VLM call:\\strict JSON};
+\node[box,text width=23mm] (c4) at (10.5,-6.6) {Research agent:\\web search};
+\node[box,text width=23mm] (c5) at (14.0,-6.6) {Write diagnosis\\and findings\\chunks};
+\draw[arr] (c1) -- (c2); \draw[arr] (c2) -- (c3); \draw[arr] (c3) -- (c4); \draw[arr] (c4) -- (c5);
+\node[db,minimum height=28mm,text width=20mm] (kb) at (18.2,-3.3) {\textbf{Knowledge}\\\textbf{store}\\pgvector +\\full-text};
+\draw[arr] (r5.east) -| (kb.north);
+\draw[arr] (c5.east) -| (kb.south);
+\draw[arr] (kb.west) -- node[lbl,above]{read} (q5.east);
+\end{tikzpicture}}

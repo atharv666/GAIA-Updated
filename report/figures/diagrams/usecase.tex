@@ -1,0 +1,23 @@
+\scaledtikz{\begin{tikzpicture}
+\tikzset{uc/.style={nohyph,draw,ellipse,font=\dgfont,align=center,text width=44mm,inner sep=1pt,minimum height=9mm,fill=white}}
+\def\actor#1#2#3{\draw (#1,#2) circle (0.2);\draw (#1,#2-0.2) -- (#1,#2-0.95);\draw (#1-0.35,#2-0.5) -- (#1+0.35,#2-0.5);\draw (#1,#2-0.95) -- (#1-0.3,#2-1.55);\draw (#1,#2-0.95) -- (#1+0.3,#2-1.55);\node[font=\dgfont\bfseries,align=center] at (#1,#2-2.1) {#3};}
+\draw[rounded corners=3pt] (2.3,1.0) rectangle (10.4,-14.2);
+\node[zlbl] at (6.35,0.8) {GAIA SYSTEM};
+\node[uc] (u1) at (6.35,0) {Drive the rover, view live video};
+\node[uc] (u2) at (6.35,-1.25) {Switch sensors on or off};
+\node[uc] (u3) at (6.35,-2.5) {View sensor readings and charts};
+\node[uc] (u4) at (6.35,-3.75) {Watch the Live view};
+\node[uc] (u5) at (6.35,-5.0) {Ask about my farm (RAG chat)};
+\node[uc] (u6) at (6.35,-6.25) {Ask an open-ended question};
+\node[uc] (u7) at (6.35,-7.5) {Capture a crop photograph};
+\node[uc] (u8) at (6.35,-8.75) {Diagnose a crop photograph};
+\node[uc] (u9) at (6.35,-10.0) {Review or delete diagnoses};
+\node[uc] (u10) at (6.35,-11.25) {Add notes and documents};
+\node[uc] (u11) at (6.35,-12.5) {Send sensor telemetry};
+\actor{0.6}{-5.5}{Farmer}
+\actor{12.1}{-11.8}{Rover}
+\actor{12.1}{-4.6}{Gemini and\\web search}
+\foreach \u in {u1,u2,u3,u4,u5,u6,u7,u8,u9,u10} {\draw (0.9,-6.3) -- (\u.west);}
+\draw (11.8,-13.2) -- (u11.east); \draw (11.8,-13.2) -- (u1.east);
+\draw (11.8,-5.6) -- (u8.east); \draw (11.8,-5.6) -- (u5.east); \draw (11.8,-5.6) -- (u6.east);
+\end{tikzpicture}}

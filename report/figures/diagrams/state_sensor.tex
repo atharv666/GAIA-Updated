@@ -1,0 +1,19 @@
+\scaledtikz{\begin{tikzpicture}
+\tikzset{st/.style={nohyph,draw,rounded corners=6pt,minimum height=10mm,minimum width=32mm,align=center,font=\dgfont,fill=white,text width=30mm}}
+\node[circle,fill=black,minimum size=3mm,inner sep=0] (init) at (0,0) {};
+\node[st,fill=black!10] (unk) at (2.7,0) {unknown\\(no switch data)};
+\node[st] (off) at (9.4,3.6) {off\\(switched off)};
+\node[st] (nr) at (9.4,0) {no reading\\(on: warming or waiting)};
+\node[st,fill=black!10] (rec) at (16.0,0) {recorded\\(readings arrive)};
+\node[st,dashed] (offl) at (9.4,-3.8) {offline\\(rover not connected)};
+\draw[arr] (init) -- (unk);
+\draw[arr] (unk) -- node[lbl,above]{first report: on} (nr);
+\draw[arr] (unk.north) |- node[lbl,pos=0.78,above]{first report: off} (off.west);
+\draw[arr] (nr.east) to[bend left=18] node[lbl,above]{reading in bucket} (rec.west);
+\draw[arr] (rec.west) to[bend left=18] node[lbl,below]{no reading} (nr.east);
+\draw[arr] (nr.north) -- node[lbl,right]{switch off} (off.south);
+\draw[arr] (off.east) -| node[lbl,pos=0.25,above]{switch on} (rec.north);
+\draw[darr] (nr.south) -- node[lbl,right]{no heartbeat} (offl.north);
+\draw[darr] (rec.south) |- node[lbl,pos=0.75,above]{no data, no heartbeat} (offl.east);
+\node[font=\fontsize{8}{9.5}\selectfont,anchor=west,text width=62mm] at (0,-3.8) {Evaluated for every sensor and every five-minute bucket. A reading always wins: if the sensor produced data, the bucket is recorded.};
+\end{tikzpicture}}

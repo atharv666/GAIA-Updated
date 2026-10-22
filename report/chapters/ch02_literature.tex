@@ -1,0 +1,167 @@
+\chapter{Literature Survey}
+
+\section{Review of Recent Literature}
+
+\subsection{Machine Learning in Agriculture}
+
+Machine learning in agriculture was reviewed in broad terms by Liakos et al.~\cite{liakos2018ml}, who grouped the work by
+application: crop management, livestock, water and soil management. Kamilaris and Prenafeta-Bold{\'u}~\cite{kamilaris2018deep}
+surveyed deep learning in agriculture and found that convolutional networks dominated image-based tasks such as
+disease detection and weed identification. For plant disease detection in particular, Mohanty et al.\ trained deep
+networks on the PlantVillage image collection and reported high accuracy on held-out images from the same
+collection~\cite{mohanty2016plantvillage,hughes2015plantvillage}, and Ferentinos~\cite{ferentinos2018deep} compared several
+architectures on a larger set of leaf images. These works establish that supervised image classifiers can be accurate
+when images resemble the training data (single leaves on plain backgrounds), but they output a class label only: no
+explanation, no treatment advice and no link to the conditions in the field.
+
+\subsection{Large Language Models for Agricultural Question Answering}
+
+Silva et al.\ examined whether a general-purpose model, GPT-4, can answer agriculture examination questions~\cite{silva2023gpt4agronomist}.
+Balaguer et al.\ compared retrieval-augmented generation with fine-tuning in a pipeline study that used agriculture as its
+case study, and reported that adaptation to local, geography-specific knowledge improved the similarity of answers to
+reference answers~\cite{balaguer2024ragvsft}. Yang et al.\ presented ShizishanGPT, an agricultural assistant that combines
+a general model with a search engine, a knowledge graph, a retrieval module and an agent that can call specialised
+crop models~\cite{yang2024shizishangpt}. Together these studies show that retrieval and tool use are the accepted way to
+bring domain and local knowledge into a general model. They also share a limitation relevant to this project: the
+knowledge comes from documents, benchmarks and public sources, not from the \emph{farmer's own live measurements}.
+
+\subsection{Vision-Language Models for Plant Disease}
+
+Two recent benchmarks evaluate general vision-language models on agricultural images. Ranario and Earles benchmarked open and
+closed models on many agricultural classification datasets and concluded that, used zero-shot, the models trail a
+supervised baseline and perform much worse with open-ended prompting than with constrained, multiple-choice
+questions. They recommend using such models with constrained interfaces and not as stand-alone diagnostic
+tools~\cite{ranario2025vlmag}. LeafNet introduced a large visual question-answering benchmark for plant diseases and
+reported that models do well on the coarse healthy-versus-diseased decision but considerably worse when asked to identify the
+pathogen or the species~\cite{nguyen2026leafnet}. These findings directly shaped the design of Pipeline B: a strict
+JSON schema constrains the model, the output separates observed evidence from assumptions, the diagnosis is phrased as a
+possibility, and a list of look-alike conditions is requested.
+
+\subsection{Confidence and Uncertainty}
+
+Neural classifiers are often over-confident, and calibration is commonly measured with the expected calibration error
+and reliability diagrams~\cite{guo2017calibration}. Language models can be asked to state their confidence, and studies
+show that these verbalised numbers carry some signal but are imperfect~\cite{kadavath2022know,xiong2024uncertainty}. For this
+reason GAIA never presents the model's self-reported confidence as a probability: it is shown as a rough indicator with
+a fixed caveat, and the evaluation scripts compute the calibration metrics so that the caveat is backed by
+measurements.
+
+\begin{table}[H]
+\centering
+\caption{Summary of the reviewed literature and its relevance to GAIA.}
+\label{tab:litsummary}
+\small
+\begin{tabular}{|P{2.4cm}|P{4.0cm}|P{5.9cm}|}
+\hline
+\textbf{Work} & \textbf{Focus} & \textbf{Relevance to GAIA}\\\hline
+Liakos et al.~\cite{liakos2018ml}; Kamilaris and Prenafeta-Bold{\'u}~\cite{kamilaris2018deep} & Reviews of machine learning and deep learning in agriculture & Establish the application area; image classifiers dominate but give labels only\\\hline
+Mohanty et al.~\cite{mohanty2016plantvillage}; Ferentinos~\cite{ferentinos2018deep} & CNN disease classifiers on leaf images & PlantVillage is used in GAIA's vision benchmark script; results are an upper bound for field photos\\\hline
+Silva et al.~\cite{silva2023gpt4agronomist} & GPT-4 on agriculture exams & Motivates grounding a general model in domain data\\\hline
+Balaguer et al.~\cite{balaguer2024ragvsft} & RAG versus fine-tuning, agriculture case study & Supports choosing RAG with prompts over fine-tuning\\\hline
+Yang et al.~\cite{yang2024shizishangpt} & Agricultural LLM with search, knowledge graph, RAG and agent & Closest system: tool-using assistant, but no live farm sensor data\\\hline
+Ranario and Earles~\cite{ranario2025vlmag} & Zero-shot VLMs versus supervised models & Motivates constrained, strict-JSON prompting and honest framing\\\hline
+Nguyen Quoc et al.~\cite{nguyen2026leafnet} & Plant-disease VQA benchmark & Coarse health is reliable, fine identification is not: show possibilities and differentials\\\hline
+Guo et al.~\cite{guo2017calibration}; Xiong et al.~\cite{xiong2024uncertainty} & Calibration and confidence elicitation & Justify the uncalibrated-confidence caveat and the ECE and Brier metrics\\\hline
+\end{tabular}
+\end{table}
+
+\section{Generative AI: Existing Approaches}
+
+\subsection{Prompting, Retrieval, Fine-Tuning and Agents}
+
+Four approaches are commonly used to adapt a general model to a domain. Table~\ref{tab:approaches} compares them for the
+needs of this project.
+
+\begin{table}[H]
+\centering
+\caption{Approaches to adapting a generative model to a domain.}
+\label{tab:approaches}
+\small
+\begin{tabular}{|P{2.6cm}|P{3.7cm}|P{3.7cm}|P{2.4cm}|}
+\hline
+\textbf{Approach} & \textbf{Strengths} & \textbf{Weaknesses for GAIA} & \textbf{Used?}\\\hline
+Plain prompting & Simple, cheap & Cannot know the farm's data & Only for small talk\\\hline
+Retrieval-augmented generation~\cite{lewis2020rag} & Uses fresh private data; answers can cite sources & Needs good retrieval; model can still ignore context & Yes (Pipeline A)\\\hline
+Fine-tuning & Learns style or domain vocabulary & Cannot absorb live sensor data; needs data and compute & No\\\hline
+Agents with tools~\cite{yao2023react} & Can decide what to look up & Unbounded loops, cost, harder to test & Yes, bounded (Pipeline B)\\\hline
+\end{tabular}
+\end{table}
+
+\subsection{Retrieval Techniques}
+
+Dense retrieval embeds text into vectors and finds nearest neighbours by cosine similarity. Approximate nearest-neighbour
+indexes such as Hierarchical Navigable Small World (HNSW) graphs make this fast for large collections~\cite{malkov2020hnsw},
+and the pgvector extension provides them inside PostgreSQL~\cite{pgvector}. Dense retrieval captures meaning (``dry
+soil'' is close to ``low soil moisture'') but can miss exact tokens such as sensor names. Lexical search has the opposite
+profile. Combining the two rankings with Reciprocal Rank Fusion (RRF) is a simple, parameter-light method that was shown
+to outperform several learned fusion methods~\cite{cormack2009rrf}. GAIA uses this hybrid, with the Gemini embedding model
+providing the vectors~\cite{lee2025geminiembedding}.
+
+\subsection{Multimodal Models}
+
+Contrastive pre-training on image--text pairs~\cite{radford2021clip} and visual instruction tuning~\cite{liu2023llava} led to
+models that can describe and reason about images. Commercial multimodal models such as Gemini accept an image and a
+text instruction together and can return structured output~\cite{gemini2023,gemini25,geminiapi}. GAIA uses this
+capability in a single call to analyse a crop photograph.
+
+\section{Review of Related Generative AI Systems}
+
+\begin{table}[H]
+\centering
+\caption{Related systems compared with GAIA, based on the cited publications. A dash means the publication does not report the feature and no claim is made.}
+\label{tab:related}
+\small
+\begin{tabular}{|P{3.1cm}|P{1.7cm}|P{1.7cm}|P{1.8cm}|P{2.0cm}|P{1.9cm}|}
+\hline
+\textbf{System} & \textbf{Image diagnosis} & \textbf{Language Q\&A} & \textbf{Web or document retrieval} & \textbf{Own live sensor data} & \textbf{Explains data gaps}\\\hline
+Plantix~\cite{plantix} & Yes & -- & -- & No & No\\\hline
+CNN classifiers~\cite{mohanty2016plantvillage,ferentinos2018deep} & Yes (label) & No & No & No & No\\\hline
+GPT-4 on exams~\cite{silva2023gpt4agronomist} & No & Yes & -- & No & No\\\hline
+ShizishanGPT~\cite{yang2024shizishangpt} & Not reported & Yes & Yes & No & No\\\hline
+\textbf{GAIA (this work)} & \textbf{Yes (VLM)} & \textbf{Yes} & \textbf{Yes} & \textbf{Yes (rover)} & \textbf{Yes}\\\hline
+\end{tabular}
+\end{table}
+
+\section{Existing Solutions / State-of-the-Art Methods}
+
+\begin{itemize}
+\item \textbf{Consumer disease-identification applications.} Photograph in, label and advice out~\cite{plantix}. They depend
+      on the farmer noticing a symptom.
+\item \textbf{Supervised leaf classifiers.} High accuracy on curated datasets~\cite{mohanty2016plantvillage,ferentinos2018deep}
+      but little transfer to field photographs and no explanation.
+\item \textbf{Retrieval-augmented agricultural assistants.} Document-grounded answers, sometimes with tools and
+      knowledge graphs~\cite{balaguer2024ragvsft,yang2024shizishangpt}.
+\item \textbf{General multimodal models used zero-shot.} Flexible, but weaker than supervised models on fine-grained
+      agricultural classes~\cite{ranario2025vlmag,nguyen2026leafnet}.
+\end{itemize}
+
+\section{Gap Identification}
+
+\begin{enumerate}[label=G\arabic*.]
+\item \textbf{Reactive operation.} Existing diagnosis tools wait for the farmer to notice a problem. A rover that walks the
+      field and measures conditions on demand supports proactive inspection.
+\item \textbf{No grounding in the farmer's own measurements.} Retrieval-based agricultural assistants answer from public
+      or curated documents. None of the reviewed systems answers from the farm's own sensor log with exact statistics.
+\item \textbf{Numbers from language models.} Letting a model compute averages or dates invites errors. A design in which code
+      computes all numbers and the model only phrases them is rarely described.
+\item \textbf{Silent handling of missing data.} Systems treat a missing reading as ``no data'' without saying whether a
+      sensor was switched off, silent or disconnected. This matters once battery-saving switches exist.
+\item \textbf{Overstated certainty.} Diagnosis tools commonly present a single label and a percentage. Evidence from the
+      literature~\cite{guo2017calibration,nguyen2026leafnet} argues for possibility-phrased output with visible evidence and
+      an uncertainty caveat.
+\item \textbf{Isolated pipelines.} Chat and diagnosis are normally separate products. Sharing a knowledge store lets the
+      assistant later discuss a diagnosis together with the field conditions at that time.
+\end{enumerate}
+
+\section{Common Findings from Literature}
+
+\begin{itemize}
+\item Retrieval and tool use, not model size alone, are the standard way to bring domain and local knowledge into a general
+      model~\cite{lewis2020rag,gao2023ragsurvey,balaguer2024ragvsft}.
+\item General vision-language models are reliable for coarse health assessment but unreliable for fine-grained
+      identification, so interfaces should constrain them and present results as possibilities~\cite{ranario2025vlmag,nguyen2026leafnet}.
+\item Model confidence is informative but not calibrated and should be disclosed as such~\cite{guo2017calibration,kadavath2022know,xiong2024uncertainty}.
+\item Hybrid lexical and dense retrieval is robust and simple to implement~\cite{cormack2009rrf}.
+\item Hallucination remains a general risk~\cite{ji2023hallucination}, so outputs should be checked by code wherever
+      the answer can be verified (numbers, citation identifiers).
+\end{itemize}

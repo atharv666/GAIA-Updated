@@ -1,0 +1,21 @@
+{
+  "device_id": "rover-01",
+  "sent_uptime_ms": 130000,
+  "readings": [
+    {
+      "uptime_ms": 115000,
+      "values": {"temperature": 27.4, "humidity": 61.0, "mq5": 208, "mq6": 191, "distance_cm": 84, "battery_v": 7.86},
+      "state": {"moving": true, "arm_deployed": false, "soil_valid": false}
+    },
+    {
+      "uptime_ms": 120000,
+      "values": {"temperature": 27.5, "humidity": 61.0, "soil_moisture": 43.5, "mq5": 210, "mq6": 190, "distance_cm": 91, "battery_v": 7.85},
+      "state": {"moving": false, "arm_deployed": true, "soil_valid": true}
+    },
+    {
+      "uptime_ms": 125000,
+      "values": {"temperature": 27.6, "humidity": 60.0, "soil_moisture": 43.8, "mq5": 215, "mq6": 190, "distance_cm": 90, "battery_v": 7.85},
+      "state": {"moving": false, "arm_deployed": true, "soil_valid": true}
+    }
+  ]
+}

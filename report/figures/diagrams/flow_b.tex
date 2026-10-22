@@ -1,0 +1,15 @@
+\scaledtikz{\begin{tikzpicture}
+\node[gbox,text width=62mm] (s1) at (0,0) {1. Photograph from the rover (/capture)\\or from the phone camera};
+\node[box,text width=62mm] (s2) at (0,-2.0) {2. Validate, fix orientation, resize to\\at most 1600 px, store the file};
+\node[box,text width=62mm] (s3) at (0,-4.0) {3. One VLM call: strict JSON (plant, status,\\evidence, confidence)};
+\node[diamond,draw,aspect=2.6,font=\dgfont,align=center,inner sep=1pt,fill=white] (d1) at (0,-6.3) {Is it a\\plant image?};
+\node[box,text width=36mm] (stop) at (-5.4,-6.3) {Stop: status\\``not\_plant''};
+\node[box,text width=62mm] (s4) at (8.4,-6.3) {4. Branch policy: healthy leads to care\\information; unhealthy or uncertain\\leads to treatment information};
+\node[box,text width=62mm] (s5) at (8.4,-4.0) {5. Agent loop (at most 2 rounds):\\plan queries, search, observe};
+\node[box,text width=62mm] (s6) at (8.4,-2.0) {6. Write findings with [W] citations,\\remove invented citations};
+\node[gbox,text width=62mm] (s7) at (8.4,0) {7. Show the result, then write the diagnosis\\and finding chunks (one-way) to the store};
+\draw[arr] (s1) -- (s2); \draw[arr] (s2) -- (s3); \draw[arr] (s3) -- (d1);
+\draw[arr] (d1) -- node[lbl,above]{no} (stop);
+\draw[arr] (d1) -- node[lbl,above]{yes} (s4);
+\draw[arr] (s4) -- (s5); \draw[arr] (s5) -- (s6); \draw[arr] (s6) -- (s7);
+\end{tikzpicture}}

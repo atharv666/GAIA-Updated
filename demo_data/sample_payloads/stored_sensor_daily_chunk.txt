@@ -1,0 +1,15 @@
+title: Daily sensor summary · Sat 17 Oct 2026 · rover-01
+source_id: rover-01:2026-10-17
+time: 2026-10-17T00:30:00+00:00 -> 2026-10-17T10:45:00+00:00
+
+Daily field summary for Saturday 17 October 2026 from rover-01. Data covers 06:00–09:00 and 16:00–16:15 farm time (13 windows, 910 readings).
+Air temperature: daily average 25.3°C (comfortable); lowest 21.9°C at 06:01; highest 33.5°C at 16:00.
+  By time of day: early morning 24.0°C, morning 26.1°C, afternoon 32.8°C.
+Relative humidity: daily average 71% (humid); lowest 45% at 16:00; highest 82% at 06:01.
+  By time of day: early morning 75%, morning 68%, afternoon 49%.
+Soil moisture: daily average 45.9% (adequate); lowest 38.4% at 16:10; highest 47.9% at 06:22.
+  By time of day: early morning 46.6%, morning 46.0%, afternoon 39.2%.
+MQ5 gas index (LPG / natural gas / methane): daily average 206 ADC (baseline); lowest 166 ADC at 06:04; highest 253 ADC at 08:01.
+  By time of day: early morning 206 ADC, morning 205 ADC, afternoon 210 ADC.
+MQ6 gas index (LPG / butane / propane): daily average 189 ADC (baseline); lowest 154 ADC at 07:08; highest 222 ADC at 07:57.
+  By time of day: early morning 190 ADC, morning 189 ADC, afternoon 188 ADC.

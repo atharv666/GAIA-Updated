@@ -1,0 +1,18 @@
+\scaledtikz{\begin{tikzpicture}
+\node[zlbl] at (4.6,0.9) {no control-flow dependency between the two pipelines};
+\node[zlbl] (ta) at (0,0.2) {PIPELINE A: chat};
+\node[zlbl] (tb) at (9.2,0.2) {PIPELINE B: diagnosis};
+\node[box,text width=50mm] (a1) at (0,-0.8) {Farmer's question (text)};
+\node[box,text width=50mm] (a2) at (0,-2.5) {Query plan: intent, sensors, time tokens\\(LLM, structured output)};
+\node[box,text width=50mm] (a3) at (0,-4.2) {Exact SQL facts [F] + hybrid retrieval [K]};
+\node[box,text width=50mm] (a4) at (0,-5.9) {Grounded answer (LLM) +\\citation validation};
+\node[box,text width=50mm] (b1) at (9.2,-0.8) {Crop photograph (image)};
+\node[box,text width=50mm] (b2) at (9.2,-2.5) {One VLM call: strict JSON\\plant, status, evidence, confidence};
+\node[box,text width=50mm] (b3) at (9.2,-4.2) {One research agent: web search};
+\node[box,text width=50mm] (b4) at (9.2,-5.9) {Present to farmer +\\write findings to knowledge store};
+\node[db,text width=22mm] (kb) at (4.6,-4.2) {\textbf{Shared}\\\textbf{knowledge}\\\textbf{store}};
+\draw[arr] (a1) -- (a2); \draw[arr] (a2) -- (a3); \draw[arr] (a3) -- (a4);
+\draw[arr] (b1) -- (b2); \draw[arr] (b2) -- (b3); \draw[arr] (b3) -- (b4);
+\draw[arr] (kb.west) -- node[lbl,above]{read} (a3.east);
+\draw[arr] (b4.west) -| node[lbl,pos=0.25,above]{write (one way)} (kb.south);
+\end{tikzpicture}}

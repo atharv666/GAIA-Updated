@@ -1,0 +1,6 @@
+# Local development on Windows/macOS/Linux without Docker:
+#   pip install -r requirements-local.txt
+-r requirements.txt
+pgserver>=0.1.4      # embedded PostgreSQL 16 + pgvector (DATABASE_URL=embedded)
+pytest>=8.2
+pyserial>=3.5        # rover bring-up console for the Arduino Nano (scripts/nano_console.py)

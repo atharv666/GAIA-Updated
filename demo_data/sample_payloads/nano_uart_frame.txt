@@ -1,0 +1,11 @@
+Arduino Nano -> ESP32-CAM, 57600 baud, one line every 500 ms:
+
+  $T,812,274,610,-1,208,191,435,84,3,7860,56,15,15,15*75
+
+Fields: T, seq=812, temp=27.4 C (x10), humidity=61.0 % (x10), mq2=-1 (not fitted), mq5=208, mq6=191,
+        soil=43.5 % (x10), distance=84 cm, arm=3 (deployed), battery=7860 mV, flags=56,
+        inst=15 (DHT11, soil, MQ5, MQ6 fitted), en=15 (all switched on), warm=15 (all ready)
+Flags 56 = DHT ok + MQ heaters warm + soil valid. The ESP32 turns this into the JSON in
+rover_api_telemetry_response.json and queues one reading every 5 s.
+With MQ5 and MQ6 switched off (en=3, mq values -1): $T,813,274,610,-1,-1,-1,435,84,3,7860,56,15,3,3*77
+Checksum *75 is the XOR of every character between '$' and '*' (two hex digits).

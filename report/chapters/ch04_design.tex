@@ -1,0 +1,295 @@
+\chapter{System Design}
+
+\section{Proposed System Architecture}
+
+GAIA is organised in four layers (Figure~\ref{fig:architecture}): the rover, the Flutter mobile application, the backend
+services and the data layer. Two outside services are used: the Gemini API (chat, vision and embeddings) and web search.
+
+\begin{figure}[H]
+\centering
+\input{figures/diagrams/architecture}
+\caption{Layered architecture of GAIA.}
+\label{fig:architecture}
+\end{figure}
+
+\subsection{Design Principles}
+
+\begin{enumerate}
+\item \textbf{Numbers come from code, words come from the model.} Sensor statistics are computed by SQL and by deterministic
+      templates. The language model receives these facts and phrases them. It is never asked to compute an average or a date.
+\item \textbf{Two independent pipelines.} Pipeline B never reads sensor data or chat history, and Pipeline A never sees image pixels.
+      The only connection is that Pipeline B \emph{writes} text chunks that Pipeline A may later \emph{read}. There is no control loop.
+      A test records every SQL statement issued during a diagnosis and checks that none touches the sensor or chat tables.
+\item \textbf{No feedback from chat into the store.} Chat answers are saved as conversation memory only. They are not embedded into the
+      knowledge store, so a model's mistake cannot return later as ``farm knowledge''.
+\item \textbf{Rover as a thin layer.} The rover samples, queues and posts. All interpretation happens in the backend.
+\item \textbf{Degrade gracefully.} Without a model key, chat lists the retrieved facts and the offline hashing embedder keeps retrieval working.
+\item \textbf{Explain gaps from records.} Which sensors were on, off or silent is recorded by code, so the assistant never has to guess.
+\end{enumerate}
+
+\subsection{Network Topologies}
+
+The phone talks \emph{directly} to the rover for control, live video and still capture; none of this passes through the backend.
+The rover pushes sensor readings to the backend by itself. The phone talks to the backend for sensor views, chat and
+diagnosis (Figure~\ref{fig:deployment}). If the phone is connected to the rover's own hotspot, the rover has no route to the
+backend. The app then offers a \emph{relay}: it reads the rover's latest reading every five seconds and forwards it to the same
+backend endpoint, queueing up to one hour of readings while the backend is unreachable. The rover's firmware supports three
+Wi-Fi modes (station with hotspot fallback, hotspot only, or hotspot plus station).
+
+\begin{figure}[H]
+\centering
+\input{figures/diagrams/deployment}
+\caption{Deployment view: devices, ports and protocols.}
+\label{fig:deployment}
+\end{figure}
+
+\section{System Block Diagram}
+
+Figure~\ref{fig:blockdiagram} follows the data from the sensors to the knowledge store (row A), from a question to a streamed
+answer (row B) and from a photograph to a stored diagnosis (row C). The knowledge store is the single meeting point.
+
+\begin{figure}[H]
+\centering
+\input{figures/diagrams/blockdiagram}
+\caption{System block diagram with the three data paths.}
+\label{fig:blockdiagram}
+\end{figure}
+
+\subsection{Use Cases}
+
+\begin{figure}[H]
+\centering
+\input{figures/diagrams/usecase}
+\caption{Use-case diagram.}
+\label{fig:usecase}
+\end{figure}
+
+\subsection{Data Model}
+
+Figure~\ref{fig:er} shows the relational schema. Sensor readings are stored in \emph{long format} (one row per sensor per
+reading), so a new sensor needs no schema change. Chunks are linked logically to their sources by a source type and a source
+identifier, not by foreign keys, so one table can hold every kind of chunk. Vectors have 768 dimensions and are indexed with
+HNSW (cosine); a GIN index on the text supports full-text search.
+
+\begin{figure}[H]
+\centering
+\input{figures/diagrams/er}
+\caption{Entity--relationship diagram of the database.}
+\label{fig:er}
+\end{figure}
+
+\section{System Workflow}
+
+\subsection{Data Lifecycle from Reading to Searchable Chunk}
+
+The ESP32 samples the Nano's latest reading every five seconds, keeps up to about 30 minutes of readings in a ring buffer while
+the backend is unreachable, and posts a batch every 15 seconds. The backend validates and stores each value immediately, so the
+newest numbers are readable through the API at once. Closed windows are aggregated and turned into text, and the
+embedding makes them searchable between 90 and 150 seconds after the window ends (a 90-second grace period for late data
+plus a background job that runs every 60 seconds). Every chat question also forces an aggregation of the still-open window, so
+\emph{exact statistics} are always current (Figure~\ref{fig:lifecycle}).
+
+\begin{figure}[H]
+\centering
+\input{figures/diagrams/lifecycle}
+\caption{Lifecycle of a sensor reading.}
+\label{fig:lifecycle}
+\end{figure}
+
+Three layers of text are produced from the numbers. All are written by deterministic templates:
+
+\begin{enumerate}
+\item a \textbf{window chunk} for each 15-minute window (statistics per sensor and the interpretation band of its average);
+\item a \textbf{daily summary} (extremes with their times, a time-of-day profile and threshold events);
+\item a \textbf{sensor on/off log} for the day (when the rover was connected and which sensors were on or off).
+\end{enumerate}
+
+An optional fourth chunk, an AI-written interpretation of the day, can be enabled; it is labelled as interpretation and is
+written only from the daily summary text.
+
+\subsection{Pipeline A: Query My Farm}
+
+Figure~\ref{fig:flowa} shows the steps. The question is first turned into a structured \emph{query plan} by the language model (or by a
+rule-based planner if no model is available): the intent (current status, statistics, comparison, trend, diagnosis history,
+farm knowledge, general advice or small talk), the sensors involved, and time \emph{tokens} such as \texttt{day:-1} or
+\texttt{daypart:0:morning}. Deterministic code resolves these tokens to exact ranges in the farm's time zone, so the model never
+computes a date. Exact statistics become numbered \emph{facts} (\texttt{[F1]}, \texttt{[F2]}\ldots), hybrid retrieval returns
+numbered \emph{chunks} (\texttt{[K1]}\ldots), and the answer-generation call receives only this context. Citation identifiers that are
+not in the context are removed from the answer, and the response carries flags that say whether the answer used farm data,
+the knowledge store, or general knowledge.
+
+\begin{figure}[H]
+\centering
+\input{figures/diagrams/flow_a}
+\caption{Workflow of Pipeline A (``Query my farm'').}
+\label{fig:flowa}
+\end{figure}
+
+\noindent\textbf{Open-ended mode.} The model plans zero to three web queries; the code runs them in parallel, removes duplicates,
+ranks institutional sources (universities, government and extension services) first, labels each result's quality and drops
+forum and social-media results when better sources exist. The answer cites results as \texttt{[W1]}, \texttt{[W2]}\ldots\ and the
+citations are validated in the same way.
+
+\subsection{Pipeline B: Crop Diagnosis}
+
+Figure~\ref{fig:flowb} shows the steps. One vision-language call returns strict JSON. If the image is not a plant, the job ends.
+Otherwise one research agent searches the web: healthy plants lead to cultivation and care information, unhealthy plants to
+the condition, treatment and prevention, and \emph{uncertain} results are treated like unhealthy ones plus a search for how to
+tell the suspected condition from its look-alikes. The agent is bounded to two rounds of plan, search and observe. A
+final call writes the findings with \texttt{[W\#]} citations. The result is shown to the farmer and then written one way into the
+knowledge store.
+
+\begin{figure}[H]
+\centering
+\input{figures/diagrams/flow_b}
+\caption{Workflow of Pipeline B (crop diagnosis).}
+\label{fig:flowb}
+\end{figure}
+
+A diagnosis runs as a background job so that slow mobile networks never hold a long HTTP request: the upload returns at once
+and the app polls the job's stage (Figure~\ref{fig:statejob}).
+
+\begin{figure}[H]
+\centering
+\input{figures/diagrams/state_job}
+\caption{State machine of a diagnosis job.}
+\label{fig:statejob}
+\end{figure}
+
+\subsection{Streaming a Chat Answer}
+
+The chat endpoint streams Server-Sent Events~\cite{whatwgsse}: the stage names (syncing, planning, retrieving, generating), the answer text as
+it is written, and finally the complete answer with validated citations, which replaces the streamed draft. The model still
+returns one structured JSON object in a single call; the backend decodes the \texttt{answer} field of this JSON as it arrives, so
+the phone shows words immediately without a second model call (Figure~\ref{fig:sequence}).
+
+\begin{figure}[H]
+\centering
+\input{figures/diagrams/sequence}
+\caption{Sequence diagram of a streamed ``Query my farm'' answer.}
+\label{fig:sequence}
+\end{figure}
+
+\subsection{Sensor Switches and Data Gaps}
+
+Each sensor can be switched on or off from the app, which saves battery because the MQ heaters dominate the rover's sensor load.
+The rover reports its switches with every reading and every push. A push with no readings is a \emph{heartbeat}, which shows
+that the rover is connected even when every sensor is off (video-only mode). From the switch events, the readings and the
+heartbeats, every sensor in every five-minute bucket gets one status (Figure~\ref{fig:statesensor}): \emph{recorded},
+\emph{off}, \emph{no reading} (switched on but silent: the heater is warming up or the soil probe is not lowered),
+\emph{offline} (the rover is not connected) or \emph{unknown} (no switch information, for example older firmware).
+
+\begin{figure}[H]
+\centering
+\input{figures/diagrams/state_sensor}
+\caption{Status of a sensor in a five-minute bucket.}
+\label{fig:statesensor}
+\end{figure}
+
+These statuses are used in three places. Window chunks and the daily summary state which sensors were missing and why. A
+dedicated \emph{sensor on/off log} chunk lists the rover's sessions. At question time, a \emph{switches} fact states when
+each requested sensor was recorded, off or silent, and attaches a tip (``switch MQ5 on in the app'') when the sensor is off. The
+answer prompt instructs the model to quote these periods exactly, never to estimate values for them, and to say which period an
+average covers.
+
+\subsection{Live Activity View}
+
+Every step publishes a short event into an in-memory log (readings received, window closed, chunk created, chunk embedded, chunk
+stored, sensor switched, chat and diagnosis stages). The backend exposes this log as a snapshot and as a Server-Sent Events
+stream, and the app's Live view animates the sensor-to-knowledge-store pipeline from it.
+
+\section{Mathematical Model}
+
+Symbols are defined in the Nomenclature section.
+
+\subsection{Time Reconstruction}
+
+The ESP32 has no real-time clock. A reading may carry a valid network-time stamp; otherwise it carries its uptime $u_i$, and the
+batch carries the uptime $u^{\mathrm{sent}}$ at sending. The backend reconstructs
+\begin{equation}
+\hat t_i = t^{\mathrm{recv}} - \frac{u^{\mathrm{sent}} - u_i}{1000}\quad\text{(seconds)},\qquad u^{\mathrm{sent}}\ge u_i,
+\label{eq:time}
+\end{equation}
+so a reading that was queued during an outage still receives the correct time. A value that is more than five minutes in the
+future is rejected.
+
+\subsection{Windows and Statistics}
+
+Windows are aligned to the farm's local clock: $W_k=[t_0+k\Delta,\;t_0+(k+1)\Delta)$ where $t_0$ is local midnight and $\Delta$ divides
+1440 minutes. For sensor $s$ with $n_{s,k}$ readings in $W_k$, the stored statistics are
+\begin{equation}
+\mu_{s,k}=\frac{1}{n_{s,k}}\sum_i x_{s,i},\qquad
+\sigma_{s,k}=\sqrt{\frac{1}{n_{s,k}}\sum_i \left(x_{s,i}-\mu_{s,k}\right)^2},\qquad
+m_{s,k}=\min_i x_{s,i},\quad M_{s,k}=\max_i x_{s,i}.
+\label{eq:window}
+\end{equation}
+Statistics over a longer period $R$ (a day, a week) are combined without returning to the raw rows. The mean is count-weighted:
+\begin{equation}
+\mu_s(R)=\frac{\sum_{k\in R} n_{s,k}\,\mu_{s,k}}{\sum_{k\in R} n_{s,k}},\qquad
+\min_R=\min_{k\in R} m_{s,k},\qquad \max_R=\max_{k\in R} M_{s,k}.
+\label{eq:combine}
+\end{equation}
+
+\subsection{Hybrid Retrieval}
+
+Embeddings are L2-normalised, so the cosine similarity is a dot product:
+\begin{equation}
+\cos(\mathbf q,\mathbf d)=\mathbf q\cdot\mathbf d,\qquad \text{pgvector distance}=1-\cos(\mathbf q,\mathbf d).
+\label{eq:cosine}
+\end{equation}
+A vector ranking and a full-text ranking are fused with Reciprocal Rank Fusion~\cite{cormack2009rrf}:
+\begin{equation}
+\mathrm{RRF}(d)=\sum_{r\in\{\text{vector},\,\text{text}\}}\frac{1}{k+\mathrm{rank}_r(d)},\qquad k=60,
+\label{eq:rrf}
+\end{equation}
+where a term is omitted if $d$ does not appear in ranking $r$. Chunks are returned in decreasing order of $\mathrm{RRF}(d)$.
+
+\subsection{Sensor Status}
+
+Let $\mathrm{Rec}_s$ be the set of buckets in which sensor $s$ produced readings, $\mathrm{Seen}$ the set of buckets in which the rover was
+connected (a batch arrived or any reading exists), and $\mathrm{sw}_s(b)\in\{\mathrm{on},\mathrm{off},\varnothing\}$ the latest switch state at the end of bucket $b$.
+\begin{equation}
+\mathrm{st}_s(b)=
+\begin{cases}
+\text{recorded} & b\in \mathrm{Rec}_s\\
+\text{offline} & b\notin \mathrm{Rec}_s,\ b\notin \mathrm{Seen}\\
+\text{off} & b\in \mathrm{Seen},\ \mathrm{sw}_s(b)=\mathrm{off}\\
+\text{no reading} & b\in \mathrm{Seen},\ \mathrm{sw}_s(b)=\mathrm{on}\\
+\text{unknown} & \text{otherwise.}
+\end{cases}
+\label{eq:status}
+\end{equation}
+Readiness of a gas sensor and validity of a soil reading are
+\begin{equation}
+\mathrm{ready}_s(t)=\mathrm{on}_s(t)\ \wedge\ \bigl(t-t_{\mathrm{on},s}\ge T_w\bigr),\qquad
+\mathrm{valid}_{\mathrm{soil}}(t)=\mathrm{on}_{\mathrm{soil}}\ \wedge\ \mathrm{arm}=\text{deployed}\ \wedge\ \neg\,\mathrm{moving},
+\label{eq:ready}
+\end{equation}
+with $T_w=60$\,s and $t_{\mathrm{on},s}$ the time the sensor was last switched on.
+
+\subsection{Calibration Metrics}
+
+For $N$ diagnoses with self-reported confidence $p_i$ and correctness $y_i\in\{0,1\}$, grouped into bins $B_j$, the expected calibration
+error~\cite{guo2017calibration} and the Brier score~\cite{brier1950verification} are
+\begin{equation}
+\mathrm{ECE}=\sum_{j}\frac{|B_j|}{N}\,\bigl|\,\mathrm{acc}(B_j)-\mathrm{conf}(B_j)\,\bigr|,\qquad
+\mathrm{BS}=\frac{1}{N}\sum_{i=1}^{N}(p_i-y_i)^2.
+\label{eq:calibration}
+\end{equation}
+
+\subsection{Rover Conversions and Energy}
+
+The battery voltage is read through a divider and the soil probe is mapped linearly between a dry and a wet calibration value:
+\begin{equation}
+V_{\mathrm{bat}}=\frac{\mathrm{ADC}}{1023}\,V_{\mathrm{ref}}\,\frac{R_1+R_2}{R_2},\qquad
+\mathrm{soil}\,[\%]=\mathrm{clamp}\!\left(100\,\frac{\mathrm{raw}-\mathrm{raw}_{\mathrm{dry}}}{\mathrm{raw}_{\mathrm{wet}}-\mathrm{raw}_{\mathrm{dry}}},\,0,\,100\right),
+\label{eq:conversions}
+\end{equation}
+with $V_{\mathrm{ref}}=5$\,V, $R_1=10$\,k$\Omega$, $R_2=4.7$\,k$\Omega$, $\mathrm{raw}_{\mathrm{dry}}=620$ and $\mathrm{raw}_{\mathrm{wet}}=280$ (to be recalibrated per probe).
+The ultrasonic distance in centimetres is the echo time in microseconds divided by 58, and joystick input is mixed as
+$\mathrm{left}=\mathrm{throttle}+\mathrm{steer}$, $\mathrm{right}=\mathrm{throttle}-\mathrm{steer}$.
+
+The energy saved by switching a sensor off for time $t_{\mathrm{off}}$ is $\Delta E=P_h\,t_{\mathrm{off}}$ when its supply is
+switched. For the two MQ heaters, $P_h\approx 5\,\mathrm{V}\times 0.38\,\mathrm{A}=1.9$\,W. As an illustration, a pack of two parallel strings of cells with an
+assumed \placeholder{2000\,mAh} per cell (replace with the datasheet value) stores about $2\times2.0\,\mathrm{Ah}\times7.4\,\mathrm{V}=29.6$\,Wh, so
+keeping the gas sensors off for one hour saves about $1.9/29.6\approx 6\%$ of the pack, ignoring regulator losses.

@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}Rover{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="eyebrow">Rover control</p>
+    <h1>See the field through Gaia.</h1>
+    <p class="subtitle">Live MJPEG feed for driving; high-resolution stills for diagnosis. Commands are relayed through this server.</p>
+  </div>
+</div>
+
+<div class="split">
+  <div class="stack">
+    <div class="feed">
+      <img id="stream" alt="Rover camera stream" class="hidden">
+      <div id="feed-empty" class="feed-empty"><div><svg class="icon lg"><use href="#i-camera"/></svg><p><strong>Connecting to the rover camera…</strong><br>
+        <span class="small">{{ rover_stream_url }}</span></p></div></div>
+      <span class="tag" style="left:14px">● LIVE</span><span class="tag" style="right:14px">CAM 01</span>
+    </div>
+    <div class="row wrap">
+      <button id="capture" class="btn"><svg class="icon sm"><use href="#i-scan"/></svg>Capture &amp; diagnose</button>
+      <button id="arm-deploy" class="btn soft"><svg class="icon sm"><use href="#i-arm"/></svg>Lower soil probe</button>
+      <button id="arm-retract" class="btn ghost">Raise probe</button>
+      <button id="pull" class="btn ghost"><svg class="icon sm"><use href="#i-refresh"/></svg>Log a reading now</button>
+    </div>
+  </div>
+
+  <div class="stack">
+    <div class="card stack">
+      <div class="row between"><h2>Drive</h2><span id="direction" class="pill neutral">parked</span></div>
+      <div class="dpad" id="dpad">
+        <span></span><button data-dir="forward" aria-label="Forward"><svg class="icon lg"><use href="#i-up"/></svg></button><span></span>
+        <button data-dir="left" aria-label="Left"><svg class="icon lg"><use href="#i-left"/></svg></button>
+        <button class="stop" id="stop" aria-label="Stop"><svg class="icon lg"><use href="#i-stop"/></svg></button>
+        <button data-dir="right" aria-label="Right"><svg class="icon lg"><use href="#i-right"/></svg></button>
+        <span></span><button data-dir="reverse" aria-label="Reverse"><svg class="icon lg"><use href="#i-down"/></svg></button><span></span>
+      </div>
+      <label class="field">Speed <span id="speed-val"></span><input id="speed" type="range" min="80" max="255" value="170"></label>
+      <div class="tiny muted">Hold a button (or W A S D / arrow keys) to drive. The rover stops automatically if commands stop arriving.</div>
+    </div>
+    <div class="card">
+      <div class="row between"><h2>Rover status</h2><span id="link" class="pill neutral">…</span></div>
+      <dl class="kv" id="status" style="margin-top:12px"></dl>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(() => {
+  const { api, esc, toast } = GAIA;
+  const el = (id) => document.getElementById(id);
+  const img = el("stream");
+  img.onload = () => { img.classList.remove("hidden"); el("feed-empty").classList.add("hidden"); };
+  img.onerror = () => { el("feed-empty").innerHTML = `<div><p><strong>Camera stream unavailable.</strong><br><span class="small">Is this computer on the rover's network? ${esc({{ rover_stream_url|tojson }})}</span></p></div>`; };
+  img.src = {{ rover_stream_url|tojson }};
+
+  const speed = el("speed");
+  const showSpeed = () => el("speed-val").textContent = speed.value;
+  speed.oninput = showSpeed; showSpeed();
+
+  let timer = null, active = null, failures = 0;
+  async function send(dir) {
+    try {
+      await api("/rover/drive", { method: "POST", json: { dir, speed: Number(speed.value) } });
+      failures = 0;
+    } catch (e) { if (++failures === 1) toast(e.message, "error"); }
+  }
+  function start(dir, btn) {
+    if (active === dir) return;
+    stop(false); active = dir;
+    btn && btn.classList.add("pressed");
+    el("direction").textContent = dir; el("direction").className = "pill ok";
+    send(dir);
+    timer = setInterval(() => send(dir), 150);  // heartbeat keeps the rover's failsafe satisfied
+  }
+  function stop(sendStop = true) {
+    clearInterval(timer); timer = null; active = null;
+    document.querySelectorAll(".dpad .pressed").forEach((b) => b.classList.remove("pressed"));
+    el("direction").textContent = "parked"; el("direction").className = "pill neutral";
+    if (sendStop) api("/rover/stop", { method: "POST" }).catch(() => {});
+  }
+  document.querySelectorAll("[data-dir]").forEach((b) => {
+    b.addEventListener("pointerdown", (e) => { e.preventDefault(); b.setPointerCapture(e.pointerId); start(b.dataset.dir, b); });
+    ["pointerup", "pointercancel", "lostpointercapture"].forEach((t) => b.addEventListener(t, () => active && stop()));
+  });
+  el("stop").onclick = () => stop();
+  const KEYS = { ArrowUp: "forward", w: "forward", ArrowDown: "reverse", s: "reverse", ArrowLeft: "left", a: "left", ArrowRight: "right", d: "right" };
+  document.addEventListener("keydown", (e) => {
+    if (e.target.matches("input, textarea")) return;
+    const dir = KEYS[e.key]; if (!dir) return;
+    e.preventDefault(); start(dir, document.querySelector(`[data-dir="${dir}"]`));
+  });
+  document.addEventListener("keyup", (e) => { if (KEYS[e.key]) stop(); });
+  window.addEventListener("blur", () => active && stop());
+
+  el("arm-deploy").onclick = () => api("/rover/arm", { method: "POST", json: { action: "deploy" } }).then(() => toast("Lowering soil probe…")).catch((e) => toast(e.message, "error"));
+  el("arm-retract").onclick = () => api("/rover/arm", { method: "POST", json: { action: "retract" } }).then(() => toast("Raising soil probe")).catch((e) => toast(e.message, "error"));
+  el("pull").onclick = () => api("/rover/telemetry/pull", { method: "POST" }).then((r) => toast(`Logged ${r.accepted} value(s)` + (r.warnings.length ? ` · ${r.warnings[0]}` : ""))).catch((e) => toast(e.message, "error"));
+  el("capture").onclick = async () => {
+    el("capture").disabled = true;
+    try {
+      stop();
+      const d = await api("/diagnoses/from-rover", { method: "POST", json: {} });
+      location.href = `/diagnose?id=${d.id}`;
+    } catch (e) { toast(e.message, "error"); el("capture").disabled = false; }
+  };
+
+  async function status() {
+    try {
+      const s = await api("/rover/status");
+      el("link").textContent = "online"; el("link").className = "pill ok";
+      const rows = [
+        ["Device", s.device_id], ["Wi-Fi", s.wifi ? `${s.wifi.mode} · ${s.wifi.ssid || ""} · ${s.wifi.rssi ?? "?"} dBm` : "—"],
+        ["IP", s.wifi && s.wifi.ip], ["Controller link", s.nano ? (s.nano.connected ? "Arduino Nano connected" : "Nano not responding") : "—"],
+        ["Soil probe arm", s.arm], ["Obstacle", s.obstacle_cm != null ? `${s.obstacle_cm} cm` : "—"],
+        ["Battery", s.battery_v != null ? `${Number(s.battery_v).toFixed(2)} V` : "—"],
+        ["Backend push", s.backend ? `${s.backend.last_push_ok ? "ok" : "failing"} · ${s.backend.queued ?? 0} queued` : "—"],
+        ["Uptime", s.uptime_ms != null ? `${Math.round(s.uptime_ms / 60000)} min` : "—"],
+      ];
+      el("status").innerHTML = rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v ?? "—")}</dd>`).join("");
+    } catch (e) {
+      el("link").textContent = "offline"; el("link").className = "pill bad";
+      el("status").innerHTML = `<dt>Error</dt><dd>${esc(e.message)}</dd>`;
+    }
+  }
+  status(); setInterval(status, 4000);
+})();
+</script>
+{% endblock %}
